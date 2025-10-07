@@ -17,34 +17,27 @@ from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_caching import Cache
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
-from flask_talisman import Talisman
-from flask_wtf.csrf import CSRFProtect
+
+from app.security import csrf, init_security, limiter
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
 # Inicializar extensões (sem app ainda)
 db = SQLAlchemy()
-csrf = CSRFProtect()
+csrf = csrf  # Re-exportar para compatibilidade
 cache = Cache()
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
-)
-talisman = None  # Será inicializado condicionalmente
+login_manager = LoginManager()
 
 
-def create_app(config_class=None):
+def create_app(config_class):
     """
     Função fábrica para criar a aplicação Flask
     
     Args:
         config_class: Classe de configuração a ser usada.
-                     Se None, usa FLASK_ENV para determinar.
     
     Returns:
         Flask: Instância configurada da aplicação
@@ -52,13 +45,9 @@ def create_app(config_class=None):
     app = Flask(__name__)
     
     # Carregar configuração
-    if config_class is None:
-        from config import get_config
-        config_class = get_config()
-    
     app.config.from_object(config_class)
     
-    # Inicializar extensões com a aplicação
+    # Inicializar extensões
     initialize_extensions(app)
     
     # Configurar logging
@@ -78,7 +67,7 @@ def create_app(config_class=None):
     
     # Log de inicialização
     app.logger.info('=' * 60)
-    app.logger.info(f'Aplicação SAP iniciada')
+    app.logger.info('Aplicação SAP iniciada')
     app.logger.info(f'Ambiente: {app.config.get("ENV", "development")}')
     app.logger.info(f'Debug: {app.debug}')
     app.logger.info(f'Database: {app.config["SQLALCHEMY_DATABASE_URI"][:50]}...')
@@ -88,37 +77,40 @@ def create_app(config_class=None):
 
 
 def initialize_extensions(app):
-    """Inicializa todas as extensões Flask"""
+    """
+    Inicializa todas as extensões Flask
     
+    Extensões registradas:
+    - DB (SQLAlchemy)
+    - CSRF (Flask-WTF)
+    - LoginManager (Flask-Login)
+    - Cache (Flask-Caching)
+    - Limiter (Flask-Limiter)
+    - Talisman (Flask-Talisman, condicional)
+    """
     # Database
     db.init_app(app)
     
-    # CSRF Protection
-    csrf.init_app(app)
+    # CSRF Protection (via app.security)
+    # csrf já foi inicializado em app.security, apenas garantir
+    
+    # LoginManager
+    login_manager.init_app(app)
+    login_manager.login_view = 'main.login'
+    login_manager.login_message = 'Por favor, faça login para acessar esta página.'
+    login_manager.login_message_category = 'info'
+    
+    # User loader para LoginManager
+    @login_manager.user_loader
+    def load_user(user_id):
+        from .models import Usuario
+        return Usuario.query.get(int(user_id))
     
     # Cache
     cache.init_app(app)
     
-    # Rate Limiting
-    limiter.init_app(app)
-    
-    # Security Headers (apenas em produção)
-    if app.config.get('SECURITY_HEADERS_ENABLED'):
-        global talisman
-        csp = app.config.get('CSP_DIRECTIVES', {})
-        talisman = Talisman(
-            app,
-            force_https=True,
-            strict_transport_security=True,
-            content_security_policy=csp,
-            content_security_policy_nonce_in=['script-src'],
-            feature_policy={
-                'geolocation': "'none'",
-                'camera': "'none'",
-                'microphone': "'none'",
-            }
-        )
-        app.logger.info('Talisman habilitado - Headers de segurança ativos')
+    # Segurança (CSRF, Limiter, Talisman)
+    init_security(app)
 
 
 def setup_logging(app):
@@ -264,8 +256,22 @@ def register_custom_filters(app):
 
 
 def register_blueprints(app):
-    """Registra todos os blueprints da aplicação"""
+    """
+    Registra todos os blueprints da aplicação (por domínio)
     
+    Blueprints registrados:
+    1. main (routes principal)
+    2. produtos
+    3. clientes
+    4. pedidos
+    5. usuarios
+    6. estoques
+    7. financeiro
+    8. coletas
+    9. apuracao
+    10. log_atividades
+    11. vendedor
+    """
     # Blueprint principal
     from . import routes
     app.register_blueprint(routes.bp)
