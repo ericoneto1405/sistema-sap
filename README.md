@@ -37,15 +37,33 @@ Acesse: `http://127.0.0.1:5004`
 
 ---
 
-## 🔑 Primeiro Acesso
+## 🔑 Configuração Inicial
 
-- **Usuário:** `admin`
-- **Senha:** `admin123`
+### **Primeiro Acesso - Desenvolvimento**
 
-⚠️ **Altere a senha após o primeiro login!**
+Para desenvolvimento local, crie um usuário administrador usando variáveis de ambiente:
+
+```bash
+# Criar admin via variáveis de ambiente
+export ADMIN_USERNAME=seu_usuario
+export ADMIN_PASSWORD=SuaSenhaForte123!
+python init_db.py
+```
+
+⚠️ **IMPORTANTE:** NUNCA use senhas fracas (admin123) mesmo em desenvolvimento.
+
+### **Primeiro Acesso - Produção**
+
+```bash
+export FLASK_ENV=production
+export ADMIN_USERNAME="admin_prod"
+export ADMIN_PASSWORD="$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")"
+python init_db.py
+```
+
+🔒 Armazene as credenciais em gerenciador de senhas.
 
 ---
-
 ## 📂 Estrutura do Projeto
 
 ```
