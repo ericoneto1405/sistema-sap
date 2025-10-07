@@ -2,10 +2,7 @@
 Configurações da Aplicação por Ambiente
 ========================================
 
-Este módulo contém as configurações da aplicação separadas por ambiente:
-- Development: Ambiente de desenvolvimento local
-- Testing: Ambiente para execução de testes
-- Production: Ambiente de produção
+Configuração simples e objetiva para Flask App Factory.
 
 Autor: Sistema SAP
 Data: Outubro 2025
@@ -15,188 +12,96 @@ import os
 from datetime import timedelta
 
 
-def validate_secret_key():
-    """Valida se SECRET_KEY está configurada"""
-    secret_key = os.environ.get('SECRET_KEY')
-    if not secret_key:
-        raise RuntimeError(
-            "SECRET_KEY não configurada. "
-            "Defina a variável de ambiente SECRET_KEY antes de iniciar a aplicação."
-        )
-    return secret_key
-
-
-class Config:
+class BaseConfig:
     """Configuração base compartilhada entre todos os ambientes"""
     
-    # Diretório base da aplicação
+    # Diretório base
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     
-    # ========== SEGURANÇA ==========
-    SECRET_KEY = validate_secret_key()
+    # Segurança - SECRET_KEY obrigatória
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-key-insecure-change-me")
     
-    # ========== BANCO DE DADOS ==========
+    # Banco de dados
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'sistema.db')}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
-    SQLALCHEMY_RECORD_QUERIES = False
     
-    # Pool de conexões
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': 10,
-        'pool_recycle': 3600,
-        'pool_pre_ping': True,
-    }
-    
-    # ========== SESSÃO ==========
-    SESSION_COOKIE_NAME = 'sap_session'
+    # Sessão
+    SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = "Lax"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     
-    # ========== UPLOADS ==========
+    # Uploads
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
     
-    # ========== LOGGING ==========
+    # Logging
     LOG_DIR = os.path.join(BASE_DIR, 'instance', 'logs')
-    LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
-    LOG_BACKUP_COUNT = 5
+    LOG_LEVEL = 'INFO'
     
-    # ========== RATE LIMITING ==========
-    RATELIMIT_ENABLED = True
-    RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'memory://')
-    RATELIMIT_DEFAULT = "200 per day;50 per hour"
-    RATELIMIT_HEADERS_ENABLED = True
+    # CSRF
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = None
+    WTF_CSRF_SSL_STRICT = False
     
-    # ========== CACHE ==========
+    # Cache
     CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 300
     
-    # ========== CSRF ==========
-    WTF_CSRF_ENABLED = True
-    WTF_CSRF_TIME_LIMIT = None  # Token não expira
-    WTF_CSRF_SSL_STRICT = False  # Permitir em desenvolvimento sem HTTPS
-    
-    # ========== HEADERS DE SEGURANÇA ==========
-    SECURITY_HEADERS_ENABLED = False  # Será True em produção
-    
-    # ========== GOOGLE VISION (OCR) ==========
-    GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
-    OCR_CACHE_ENABLED = True
-    OCR_MONTHLY_LIMIT = int(os.environ.get('OCR_MONTHLY_LIMIT', '1000'))
-    OCR_ENFORCE_LIMIT = os.environ.get('OCR_ENFORCE_LIMIT', 'True').lower() == 'true'
-    
-    # ========== TIMEZONE ==========
-    TIMEZONE = 'America/Sao_Paulo'
-
-
-class DevelopmentConfig(Config):
-    """Configuração para ambiente de desenvolvimento"""
-    
-    DEBUG = True
-    TESTING = False
-    
-    # Banco de dados local SQLite
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        f'sqlite:///{os.path.join(Config.BASE_DIR, "instance", "sistema.db")}'
-    
-    SQLALCHEMY_ECHO = False  # Não logar queries SQL no console
-    
-    # Sessão menos restritiva em desenvolvimento
-    SESSION_COOKIE_SECURE = False
-    SESSION_COOKIE_SAMESITE = 'Lax'
-    
-    # CSRF menos restritivo em dev
-    WTF_CSRF_SSL_STRICT = False
-    
-    # Cache simples
-    CACHE_TYPE = 'SimpleCache'
-    
-    # Rate limiting mais permissivo
-    RATELIMIT_DEFAULT = "1000 per day;200 per hour"
-    
-    # Logging mais verboso
-    LOG_LEVEL = 'DEBUG'
-    
-    # Headers de segurança desabilitados em dev
-    SECURITY_HEADERS_ENABLED = False
-
-
-class TestingConfig(Config):
-    """Configuração para ambiente de testes"""
-    
-    DEBUG = False
-    TESTING = True
-    
-    # Banco de dados em memória para testes
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    
-    # Desabilitar CSRF em testes
-    WTF_CSRF_ENABLED = False
-    
-    # Sessão de teste
-    SESSION_COOKIE_SECURE = False
-    
-    # Cache nulo para testes isolados
-    CACHE_TYPE = 'NullCache'
-    
-    # Rate limiting desabilitado em testes
-    RATELIMIT_ENABLED = False
-    
-    # Logging mínimo
-    LOG_LEVEL = 'ERROR'
-    
-    # OCR mock em testes
-    OCR_ENFORCE_LIMIT = False
-    
-    # Headers de segurança desabilitados em testes
-    SECURITY_HEADERS_ENABLED = False
-
-
-class ProductionConfig(Config):
-    """Configuração para ambiente de produção"""
-    
-    DEBUG = False
-    TESTING = False
-    
-    # Banco de dados PostgreSQL/MySQL em produção
-    _database_url = os.environ.get('DATABASE_URL')
-    if not _database_url:
-        # Em produção, se DATABASE_URL não estiver definida, usar SQLite como fallback
-        # mas logar um warning
-        import warnings
-        warnings.warn(
-            "DATABASE_URL não configurada para produção. "
-            "Usando SQLite como fallback (NÃO recomendado para produção)."
-        )
-        _database_url = f'sqlite:///{os.path.join(Config.BASE_DIR, "instance", "sistema.db")}'
-    
-    SQLALCHEMY_DATABASE_URI = _database_url
-    
-    # Sessão segura em produção
-    SESSION_COOKIE_SECURE = True  # Apenas HTTPS
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Strict'
-    
-    # CSRF estrito em produção
-    WTF_CSRF_SSL_STRICT = True
-    
-    # Cache Redis em produção
-    CACHE_TYPE = os.environ.get('CACHE_TYPE', 'RedisCache')
-    CACHE_REDIS_URL = os.environ.get('REDIS_URL')
-    CACHE_DEFAULT_TIMEOUT = 600
-    
-    # Rate limiting com Redis
-    RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+    # Rate Limiting
+    RATELIMIT_ENABLED = True
+    RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')
     RATELIMIT_DEFAULT = "200 per day;50 per hour"
     
-    # Logging em nível INFO
+    # Security Headers
+    SECURITY_HEADERS_ENABLED = False
+    
+    # Google Vision (OCR)
+    GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    OCR_MONTHLY_LIMIT = int(os.getenv('OCR_MONTHLY_LIMIT', '1000'))
+    OCR_ENFORCE_LIMIT = os.getenv('OCR_ENFORCE_LIMIT', 'True').lower() == 'true'
+
+
+class DevelopmentConfig(BaseConfig):
+    """Configuração para desenvolvimento"""
+    
+    DEBUG = True
+    SESSION_COOKIE_SECURE = False
+    LOG_LEVEL = 'DEBUG'
+    RATELIMIT_DEFAULT = "1000 per day;200 per hour"
+
+
+class TestingConfig(BaseConfig):
+    """Configuração para testes"""
+    
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    WTF_CSRF_ENABLED = False
+    RATELIMIT_ENABLED = False
+    CACHE_TYPE = 'NullCache'
+    OCR_ENFORCE_LIMIT = False
+
+
+class ProductionConfig(BaseConfig):
+    """Configuração para produção"""
+    
+    DEBUG = False
+    SESSION_COOKIE_SAMESITE = "Strict"
+    WTF_CSRF_SSL_STRICT = True
     LOG_LEVEL = 'INFO'
     
-    # Headers de segurança HABILITADOS em produção
-    SECURITY_HEADERS_ENABLED = True
+    # Validação estrita em produção
+    @classmethod
+    def init_app(cls, app):
+        """Validações adicionais para produção"""
+        if cls.SECRET_KEY == "dev-key-insecure-change-me":
+            raise RuntimeError("SECRET_KEY padrão detectada em produção! Configure SECRET_KEY.")
+        if 'sqlite' in cls.SQLALCHEMY_DATABASE_URI.lower():
+            import warnings
+            warnings.warn("SQLite em produção não é recomendado. Use PostgreSQL ou MySQL.")
     
-    # Content Security Policy
+    # Headers de segurança habilitados em produção
+    SECURITY_HEADERS_ENABLED = True
     CSP_DIRECTIVES = {
         'default-src': ["'self'"],
         'script-src': ["'self'", "'unsafe-inline'"],
@@ -207,11 +112,15 @@ class ProductionConfig(Config):
         'frame-ancestors': ["'none'"],
     }
     
-    # Force HTTPS
-    PREFERRED_URL_SCHEME = 'https'
+    # Cache Redis
+    CACHE_TYPE = os.getenv('CACHE_TYPE', 'SimpleCache')
+    CACHE_REDIS_URL = os.getenv('REDIS_URL')
+    
+    # Rate Limiting com Redis
+    RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')
 
 
-# Mapeamento de ambientes para classes de configuração
+# Mapeamento de ambientes
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
@@ -225,13 +134,12 @@ def get_config(env=None):
     Retorna a configuração apropriada baseada no ambiente
     
     Args:
-        env (str): Nome do ambiente ('development', 'testing', 'production')
-                  Se None, usa FLASK_ENV ou 'default'
+        env: Nome do ambiente ou None para auto-detectar via FLASK_ENV
     
     Returns:
-        Config: Classe de configuração apropriada
+        Classe de configuração apropriada
     """
     if env is None:
-        env = os.environ.get('FLASK_ENV', 'development')
+        env = os.getenv('FLASK_ENV', 'development')
     
     return config.get(env, config['default'])
