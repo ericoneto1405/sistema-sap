@@ -1,0 +1,23 @@
+repos:
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: eslint
+        language: system
+        files: \.js$
+        args: ['meu_app/static/js/coletas/**/*.js']
+        
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: system
+        files: \.py$
+        args: ['meu_app/coletas/']
+        
+      - id: pytest-unit
+        name: pytest-unit
+        entry: pytest
+        language: system
+        files: \.py$
+        args: ['tests/coletas/', '-q']

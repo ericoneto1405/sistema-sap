@@ -1,0 +1,62 @@
+
+{% extends "base.html" %}
+
+{% block title %}Histórico de Coletas - Pedido #{{ historico.pedido.id }}{% endblock %}
+
+{% block page_title %}📜 Histórico de Coletas - Pedido #{{ historico.pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-history"></i> Detalhes do Pedido
+                    </h3>
+                    <p class="text-muted mb-0">
+                        <strong>Cliente:</strong> {{ historico.pedido.cliente.nome }} | 
+                        <strong>Data do Pedido:</strong> {{ historico.pedido.data.strftime('%d/%m/%Y') }}
+                    </p>
+                </div>
+                <div class="card-body">
+                    {% for coleta in historico.coletas %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>Coleta #{{ coleta.id }}</strong> - {{ coleta.data_coleta.strftime('%d/%m/%Y %H:%M') }}
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Retirado por:</strong> {{ coleta.nome_retirada }}</p>
+                            <p><strong>Documento:</strong> {{ coleta.documento_retirada }}</p>
+                            <p><strong>Responsável pela Coleta:</strong> {{ coleta.responsavel_coleta.nome }}</p>
+                            {% if coleta.observacoes %}
+                            <p><strong>Observações:</strong> {{ coleta.observacoes }}</p>
+                            {% endif %}
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Quantidade Coletada</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in coleta.itens_coletados %}
+                                    <tr>
+                                        <td>{{ item.item_pedido.produto.nome }}</td>
+                                        <td>{{ item.quantidade_coletada }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <a href="{{ url_for('coletas.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

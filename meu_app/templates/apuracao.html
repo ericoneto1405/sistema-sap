@@ -1,0 +1,1542 @@
+{% extends "base.html" %}
+
+{% block title %}Apuração Atacado{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📊 Apuração Atacado</h2>
+</div>
+
+<!-- Month and Year Selection -->
+<div class="selection-card">
+    <form method="GET" class="selection-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mes">Mês</label>
+                <select name="mes" id="mes" class="form-control">
+                    {% for i in range(1, 13) %}
+                        {% set mes_nome = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][i] %}
+                        <option value="{{ i }}" {% if i == mes_selecionado %}selected{% endif %}>
+                            {{ mes_nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="ano">Ano</label>
+                <select name="ano" id="ano" class="form-control">
+                    {% for ano in range(2020, 2101) %}
+                        <option value="{{ ano }}" {% if ano == ano_selecionado %}selected{% endif %}>
+                            {{ ano }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" class="btn-search">
+                <span class="icon-search">🔍</span>
+                Buscar / Nova
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Container de Abas -->
+<div class="tabs-container">
+    <!-- Cabeçalho das Abas -->
+    <div class="tabs-header">
+        <button class="tab-btn active" data-tab="previsao-verbas">
+            📊 Previsão de Verbas
+        </button>
+        <button class="tab-btn" data-tab="outro-apuracao">
+            🔒 Apuração Definitiva
+        </button>
+    </div>
+    
+    <!-- Aba Previsão de Verbas -->
+    <div class="tab-content active" id="previsao-verbas">
+        <div class="action-cards">
+            <div class="action-card">
+                <div class="card-icon">➕</div>
+                <h3>Nova Previsão</h3>
+                <p>Criar nova previsão de verbas para o período</p>
+                <button class="btn-primary" onclick="criarNovaPrevisao()">Criar Previsão</button>
+            </div>
+            
+
+        </div>
+        
+        <!-- Tabela de Previsões -->
+        <div class="table-section">
+            <h3>📋 Lista de Previsões de Verbas</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>PERÍODO</th>
+                            <th>SCANN</th>
+                            <th>PLANO NEGÓCIOS</th>
+                            <th>TIME AMBEV</th>
+                            <th>OUTRAS RECEITAS</th>
+                            <th>TOTAL VERBAS</th>
+                            <th>STATUS</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if apuracoes %}
+                            {% for apuracao in apuracoes %}
+                            <tr>
+                                <td>#{{ apuracao.id }}</td>
+                                <td>{{ apuracao.mes_nome }} de {{ apuracao.ano }}</td>
+                                <td>R$ {{ "{:,.2f}".format(apuracao.verba_scann).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                <td>R$ {{ "{:,.2f}".format(apuracao.verba_plano_negocios).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                <td>R$ {{ "{:,.2f}".format(apuracao.verba_time_ambev).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                <td>R$ {{ "{:,.2f}".format(apuracao.verba_outras_receitas).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                <td>R$ {{ "{:,.2f}".format(apuracao.total_verbas).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ 'definitivo' if apuracao.definitivo else 'rascunho' }}">
+                                        {{ 'Definitivo' if apuracao.definitivo else 'Rascunho' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-icons">
+                                                                                 <a href="{{ url_for('apuracao.editar_apuracao', id=apuracao.id) }}" class="icon-btn icon-edit" title="Editar previsão">
+                                            <svg class="icon-svg" viewBox="0 0 24 24">
+                                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                            </svg>
+                                        </a>
+                                        <a href="{{ url_for('apuracao.excluir_apuracao', id=apuracao.id) }}" class="icon-btn icon-delete" 
+                                           onclick="return confirm('Tem certeza que deseja excluir esta previsão?')" title="Excluir previsão">
+                                            <svg class="icon-svg" viewBox="0 0 24 24">
+                                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="9" class="empty-state">Nenhuma previsão de verbas encontrada.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Formulário de Nova Previsão (inicialmente oculto) -->
+        
+
+                    <!-- Summary Boxes para Previsão -->
+                    <div class="summary-grid">
+                        <div class="summary-box summary-receitas-adicionais">
+                            <div class="summary-icon">📈</div>
+                            <div class="summary-content">
+                                <div class="summary-label">Total Verbas</div>
+                                <div class="summary-value" id="previsao-total-verbas">R$ 0,00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="cancelarPrevisao()">
+                            <span class="icon-cancel">❌</span>
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn-save" onclick="salvarPrevisao()">
+                            <span class="icon-save">💾</span>
+                            Salvar Previsão
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    
+        <div class="previsao-form-container" id="previsao-form-container" style="display: none;">
+            <div class="calculation-card previsao-card">
+                <h3>Nova Previsão de Verbas para {{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes_selecionado or 8] }} de {{ ano_selecionado or 2025 }}</h3>
+                
+                <form method="POST" class="calculation-form" id="formPrevisao">
+                    <input type="hidden" name="mes" value="{{ mes_selecionado or 8 }}">
+                    <input type="hidden" name="ano" value="{{ ano_selecionado or 2025 }}">
+                    <input type="hidden" name="tipo" value="previsao">
+                    
+                    <!-- Indicador de Tipo -->
+                    <div class="tipo-indicator previsao-indicator">
+                        <span class="tipo-icon">📊</span>
+                        <span class="tipo-text">PREVISÃO DE VERBAS</span>
+                        <span class="tipo-desc">Formulário para criar previsões de verbas (rascunho)</span>
+                    </div>
+                    
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label for="previsao_verba_scann">SCANN</label>
+                            <input type="number" id="previsao_verba_scann" name="verba_scann" step="0.01" min="0" value="0" required placeholder="0,00" onchange="calcularTotaisPrevisao()">
+                            <div class="input-help">Verba prevista para SCANN</div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="previsao_verba_plano_negocios">Plano de Negócios</label>
+                            <input type="number" id="previsao_verba_plano_negocios" name="verba_plano_negocios" step="0.01" min="0" value="0" required placeholder="0,00" onchange="calcularTotaisPrevisao()">
+                            <div class="input-help">Verba prevista para Plano de Negócios</div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="previsao_verba_time_ambev">TIME AMBEV</label>
+                            <input type="number" id="previsao_verba_time_ambev" name="verba_time_ambev" step="0.01" min="0" value="0" required placeholder="0,00" onchange="calcularTotaisPrevisao()">
+                            <div class="input-help">Verba prevista para TIME AMBEV</div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="previsao_verba_outras_receitas">Outras Receitas</label>
+                            <input type="number" id="previsao_verba_outras_receitas" name="verba_outras_receitas" step="0.01" min="0" value="0" required placeholder="0,00" onchange="calcularTotaisPrevisao()">
+                            <div class="input-help">Outras verbas previstas</div>
+                        </div>
+                    </div>
+    <!-- Aba Apuração Definitiva -->
+    <div class="tab-content" id="outro-apuracao">
+        <div class="action-cards">
+            <div class="action-card">
+                <div class="card-icon">💰</div>
+                <h3>Nova Apuração Definitiva</h3>
+                <p>Criar nova apuração definitiva para o período</p>
+                <button class="btn-primary" onclick="criarNovaApuracaoDefinitiva()">Criar Apuração Definitiva</button>
+            </div>
+            
+            <div class="action-card">
+                <div class="card-icon">📊</div>
+                <h3>Dashboard Analítico</h3>
+                <p>Visualizar análises e relatórios</p>
+
+            </div>
+        </div>
+        
+        <!-- Nova Apuração Definitiva Section -->
+        <div class="calculation-card">
+            <h3>Nova Apuração Definitiva para {{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes_selecionado or 8] }} de {{ ano_selecionado or 2025 }}</h3>
+            
+            <form method="POST" class="calculation-form" id="formApuração">
+                <input type="hidden" name="mes" value="{{ mes_selecionado or 8 }}">
+                <input type="hidden" name="ano" value="{{ ano_selecionado or 2025 }}">
+                <input type="hidden" name="tipo" value="apuracao">
+                
+                <!-- Indicador de Tipo -->
+                <div class="tipo-indicator apuracao-indicator">
+                    <span class="tipo-icon">🔒</span>
+                    <span class="tipo-text">APURAÇÃO DEFINITIVA</span>
+                    <span class="tipo-desc">Formulário para criar apuração definitiva com todos os custos</span>
+                </div>
+                
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label for="verba_scann">SCANN</label>
+                        <input type="number" id="verba_scann" name="verba_scann" step="0.01" min="0" 
+                               value="{{ apuracao_existente.verba_scann if apuracao_existente else 0 }}" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="verba_plano_negocios">Plano de Negócios</label>
+                        <input type="number" id="verba_plano_negocios" name="verba_plano_negocios" step="0.01" min="0" 
+                               value="{{ apuracao_existente.verba_plano_negocios if apuracao_existente else 0 }}" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="verba_time_ambev">TIME AMBEV</label>
+                        <input type="number" id="verba_time_ambev" name="verba_time_ambev" step="0.01" min="0" 
+                               value="{{ apuracao_existente.verba_time_ambev if apuracao_existente else 0 }}" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="verba_outras_receitas">Outras Receitas</label>
+                        <input type="number" id="verba_outras_receitas" name="verba_outras_receitas" step="0.01" min="0" 
+                               value="{{ apuracao_existente.verba_outras_receitas if apuracao_existente else 0 }}" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="outros_custos">Outros Custos</label>
+                        <input type="number" id="outros_custos" name="outros_custos" step="0.01" min="0" 
+                               value="{{ apuracao_existente.outros_custos if apuracao_existente else 0 }}" required>
+                    </div>
+                </div>
+
+                <!-- Summary Boxes -->
+                <div class="summary-grid">
+                    <div class="summary-box summary-receita">
+                        <div class="summary-icon">📈</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Receita Total</div>
+                            <div class="summary-value" id="receita-total">R$ 0,00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-box summary-custo">
+                        <div class="summary-icon">📉</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Custo Produtos</div>
+                            <div class="summary-value" id="custo-produtos">R$ 0,00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-box summary-receitas-adicionais">
+                        <div class="summary-icon">📈</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Receitas Adicionais</div>
+                            <div class="summary-value" id="receitas-adicionais">R$ 0,00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-box summary-custos-operacionais">
+                        <div class="summary-icon">📉</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Custos Operacionais</div>
+                            <div class="summary-value" id="custos-operacionais">R$ 0,00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-box summary-resultado">
+                        <div class="summary-icon">💰</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Resultado Líquido</div>
+                            <div class="summary-value" id="resultado-liquido">R$ 0,00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-save" onclick="salvarApuração()">
+                        <span class="icon-save">💾</span>
+                        Salvar
+                    </button>
+                    <button type="button" class="btn-save-definitivo" onclick="salvarDefinitivo()">
+                        <span class="icon-save">🔒</span>
+                        Salvar Definitivo
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Formulário de Nova Previsão (inicialmente oculto) -->
+        
+
+                    <!-- Summary Boxes para Previsão -->
+                    <div class="summary-grid">
+                        <div class="summary-box summary-receitas-adicionais">
+                            <div class="summary-icon">📈</div>
+                            <div class="summary-content">
+                                <div class="summary-label">Total Verbas</div>
+                                <div class="summary-value" id="previsao-total-verbas">R$ 0,00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="cancelarPrevisao()">
+                            <span class="icon-cancel">❌</span>
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn-save" onclick="salvarPrevisao()">
+                            <span class="icon-save">💾</span>
+                            Salvar Previsão
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Input files ocultos -->
+
+
+<!-- Modal de Confirmação de Senha -->
+<div id="modalSenha" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">🔐 Confirmação de Senha</h3>
+            <span class="close" onclick="fecharModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p class="modal-message" id="modalMessage">
+                Para salvar como definitivo, é necessário inserir a senha do administrador.
+            </p>
+            <form id="formSenha">
+                <div class="form-group">
+                    <label for="senhaAdmin">Senha do Administrador:</label>
+                    <input type="password" id="senhaAdmin" name="senha" required>
+                    <div class="error-message" id="errorMessage"></div>
+                </div>
+            </form>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Verificando senha...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btnConfirmar" onclick="confirmarAcao()">Confirmar</button>
+        </div>
+        
+        <!-- Formulário de Nova Previsão (inicialmente oculto) -->
+        
+
+                    <!-- Summary Boxes para Previsão -->
+                    <div class="summary-grid">
+                        <div class="summary-box summary-receitas-adicionais">
+                            <div class="summary-icon">📈</div>
+                            <div class="summary-content">
+                                <div class="summary-label">Total Verbas</div>
+                                <div class="summary-value" id="previsao-total-verbas">R$ 0,00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="cancelarPrevisao()">
+                            <span class="icon-cancel">❌</span>
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn-save" onclick="salvarPrevisao()">
+                            <span class="icon-save">💾</span>
+                            Salvar Previsão
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Calculation History -->
+<div class="history-card">
+    <h3>Histórico de Apurações</h3>
+    <div class="history-list">
+        {% if apuracoes %}
+            {% for apuracao in apuracoes %}
+            <div class="history-item">
+                <span class="history-period">{{ apuracao.mes_nome }} de {{ apuracao.ano }}</span>
+                <span class="history-value">R$ {{ "{:,.2f}".format(apuracao.resultado_liquido).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="history-empty">
+                <span>Nenhuma apuração encontrada</span>
+            
+        {% endif %}
+    
+
+
+<style>
+/* Container principal */
+.apuracao-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Header Section */
+.apuracao-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.header-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.icon-dollar {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.header-content h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0 0 0.5rem 0;
+}
+
+.header-content p {
+    color: #718096;
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* Selection Card */
+.selection-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.selection-form .form-row {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.9rem;
+}
+
+.form-control {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background: #f8f9fa;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-search {
+    background: #2d3748;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-search:hover {
+    background: #4a5568;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45, 55, 72, 0.3);
+}
+
+/* Calculation Card */
+.calculation-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.calculation-card h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 2rem;
+}
+
+.input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Summary Grid */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-box {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.summary-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.summary-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 0.8rem;
+    color: #718096;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.summary-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2d3748;
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
+/* Summary box colors */
+.summary-receita .summary-icon {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.summary-custo .summary-icon {
+    background: rgba(245, 101, 101, 0.1);
+    color: #f56565;
+}
+
+.summary-receitas-adicionais .summary-icon {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.summary-custos-operacionais .summary-icon {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.summary-resultado {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+}
+
+.summary-resultado .summary-label,
+.summary-resultado .summary-value {
+    color: white;
+}
+
+.summary-resultado .summary-icon {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-save {
+    background: #2d3748;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-save:hover {
+    background: #4a5568;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45, 55, 72, 0.3);
+}
+
+.btn-cancel {
+    background: #e2e8f0; /* Cor de fundo neutra */
+    color: #2d3748; /* Cor do texto escura */
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 1rem; /* Espaçamento entre Cancelar e Salvar */
+}
+
+.btn-cancel:hover {
+    background: #cbd5e0; /* Cor de fundo um pouco mais escura no hover */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Styles */
+
+.btn-save-definitivo {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-save-definitivo:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close:hover {
+    color: #2c3e50;
+}
+
+.modal-body {
+    margin-bottom: 25px;
+}
+
+.modal-message {
+    font-size: 1rem;
+    color: #6c757d;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-primary {
+    background-color: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #5a67d8;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.9rem;
+    margin-top: 8px;
+    display: none;
+}
+
+.loading {
+    display: none;
+    text-align: center;
+    margin-top: 10px;
+}
+
+.spinner {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* History Card */
+.history-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+
+/* Indicadores de Tipo */
+.tipo-indicator {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.previsao-indicator {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.apuracao-indicator {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.tipo-icon {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.tipo-text {
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.tipo-desc {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-left: auto;
+}
+
+/* Melhorias nos campos de input */
+.input-help {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.input-group input:focus + .input-help {
+    color: #667eea;
+}
+
+/* Validação visual */
+.input-group.error input {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.input-group.success input {
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.validation-message {
+    font-size: 0.85rem;
+    margin-top: 5px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: none;
+}
+
+.validation-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.validation-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.history-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 1rem;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.history-item:hover {
+    background: #e2e8f0;
+    transform: translateX(5px);
+}
+
+.history-period {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.history-value {
+    font-weight: 700;
+    color: #10b981;
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.history-empty {
+    text-align: center;
+    padding: 2rem;
+    color: #718096;
+    font-style: italic;
+}
+
+/* Responsividade */
+
+</style>
+
+<script>
+// Controle de Abas
+document.addEventListener('DOMContentLoaded', function() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            
+            // Remover classe active de todos os botões e conteúdos
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Adicionar classe active ao botão clicado e conteúdo correspondente
+            this.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+        });
+    });
+});
+
+// Funções para as novas abas
+function criarNovaPrevisao() {
+    // Mostrar formulário de previsão na aba atual
+    const previsaoContainer = document.getElementById('previsao-form-container');
+    const tableSection = document.querySelector('.table-section');
+    
+    // Ocultar tabela e mostrar formulário
+    tableSection.style.display = 'none';
+    previsaoContainer.style.display = 'block';
+    
+    // Limpar campos do formulário de previsão
+    document.getElementById('previsao_verba_scann').value = '';
+    document.getElementById('previsao_verba_plano_negocios').value = '';
+    document.getElementById('previsao_verba_time_ambev').value = '';
+    document.getElementById('previsao_verba_outras_receitas').value = '';
+    
+    // Calcular totais iniciais
+    calcularTotaisPrevisao();
+    
+    // Scroll para o formulário
+    setTimeout(() => {
+        previsaoContainer.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+}
+
+function criarNovaApuracaoDefinitiva() {
+    // Criar nova apuração definitiva - já estamos na aba correta
+    
+    // Limpar campos para nova apuração
+    document.getElementById('verba_scann').value = '';
+    document.getElementById('verba_plano_negocios').value = '';
+    document.getElementById('verba_time_ambev').value = '';
+    document.getElementById('verba_outras_receitas').value = '';
+    document.getElementById('outros_custos').value = '';
+    
+    // Restaurar título para apuração definitiva
+    const tituloForm = document.querySelector('.calculation-card h3');
+    const mesIndex = {{ mes_selecionado or 8 }};
+    const ano = {{ ano_selecionado or 2025 }};
+    const meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    tituloForm.textContent = 'Nova Apuração Definitiva para ' + meses[mesIndex] + ' de ' + ano;
+    
+    // Restaurar botões para apuração definitiva
+    const btnSalvar = document.querySelector('.btn-save');
+    const btnDefinitivo = document.querySelector('.btn-save-definitivo');
+    btnSalvar.innerHTML = '<span class="icon-save">💾</span> Salvar';
+    btnDefinitivo.innerHTML = '<span class="icon-save">🔒</span> Salvar Definitivo';
+    
+    // Scroll para o formulário
+    document.querySelector('.calculation-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelarPrevisao() {
+    // Ocultar formulário e mostrar tabela
+    const previsaoContainer = document.getElementById('previsao-form-container');
+    const tableSection = document.querySelector('.table-section');
+    
+    previsaoContainer.style.display = 'none';
+    tableSection.style.display = 'block';
+}
+
+function calcularTotaisPrevisao() {
+    const verbaScann = parseFloat(document.getElementById('previsao_verba_scann').value) || 0;
+    const verbaPlanoNegocios = parseFloat(document.getElementById('previsao_verba_plano_negocios').value) || 0;
+    const verbaTimeAmbev = parseFloat(document.getElementById('previsao_verba_time_ambev').value) || 0;
+    const verbaOutrasReceitas = parseFloat(document.getElementById('previsao_verba_outras_receitas').value) || 0;
+    
+    // Calcular total de verbas
+    const totalVerbas = verbaScann + verbaPlanoNegocios + verbaTimeAmbev + verbaOutrasReceitas;
+    
+    // Atualizar display
+    document.getElementById('previsao-total-verbas').textContent = `R$ ${totalVerbas.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+}
+
+function salvarPrevisao() {
+    // Validar antes de salvar
+    if (!validarPrevisao()) {
+        alert('Por favor, corrija os erros antes de salvar.');
+        return;
+    }
+    
+    // Confirmar salvamento
+    if (!confirm('Tem certeza que deseja salvar esta previsão de verbas?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('verba_scann', document.getElementById('previsao_verba_scann').value);
+    formData.append('verba_plano_negocios', document.getElementById('previsao_verba_plano_negocios').value);
+    formData.append('verba_time_ambev', document.getElementById('previsao_verba_time_ambev').value);
+    formData.append('verba_outras_receitas', document.getElementById('previsao_verba_outras_receitas').value);
+    formData.append('outros_custos', '0'); // Previsões não têm outros custos
+    formData.append('tipo', 'previsao');
+    formData.append('mes', '{{ mes_selecionado or 8 }}');
+    formData.append('ano', '{{ ano_selecionado or 2025 }}');
+    
+    // Mostrar loading
+    const btnSalvar = document.querySelector('#formPrevisao .btn-save');
+    const originalText = btnSalvar.innerHTML;
+    btnSalvar.innerHTML = '<span class="spinner"></span> Salvando...';
+    btnSalvar.disabled = true;
+    
+    // Enviar via AJAX
+    fetch('/apuracao/salvar', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar sucesso
+            mostrarMensagem('Previsão salva com sucesso!', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            mostrarMensagem('Erro ao salvar previsão: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarMensagem('Erro ao salvar previsão', 'error');
+    })
+    .finally(() => {
+        // Restaurar botão
+        btnSalvar.innerHTML = originalText;
+        btnSalvar.disabled = false;
+    });
+}
+
+function validarPrevisao() {
+    let isValid = true;
+    const campos = [
+        'previsao_verba_scann',
+        'previsao_verba_plano_negocios', 
+        'previsao_verba_time_ambev',
+        'previsao_verba_outras_receitas'
+    ];
+    
+    // Limpar validações anteriores
+    campos.forEach(campo => {
+        const input = document.getElementById(campo);
+        const group = input.closest('.input-group');
+        group.classList.remove('error', 'success');
+        
+        // Remover mensagens de validação existentes
+        const existingMsg = group.querySelector('.validation-message');
+        if (existingMsg) {
+            existingMsg.remove();
+        }
+    });
+    
+    // Validar cada campo
+    campos.forEach(campo => {
+        const input = document.getElementById(campo);
+        const group = input.closest('.input-group');
+        const valor = parseFloat(input.value) || 0;
+        
+        // Validações específicas para previsões
+        if (valor < 0) {
+            mostrarErroValidacao(group, 'Valor não pode ser negativo');
+            isValid = false;
+        } else if (valor > 1000000) {
+            mostrarErroValidacao(group, 'Valor muito alto para previsão');
+            isValid = false;
+        } else if (valor > 0) {
+            mostrarSucessoValidacao(group, 'Valor válido');
+        }
+    });
+    
+    // Validar se pelo menos uma verba foi informada
+    const totalVerbas = parseFloat(document.getElementById('previsao-total-verbas').textContent.replace('R$ ', '').replace('.', '').replace(',', '.')) || 0;
+    if (totalVerbas === 0) {
+        mostrarMensagem('Atenção: Nenhuma verba foi informada. Deseja continuar?', 'warning');
+    }
+    
+    return isValid;
+}
+
+function mostrarErroValidacao(group, message) {
+    group.classList.add('error');
+    const msg = document.createElement('div');
+    msg.className = 'validation-message error';
+    msg.textContent = message;
+    group.appendChild(msg);
+}
+
+function mostrarSucessoValidacao(group, message) {
+    group.classList.add('success');
+    const msg = document.createElement('div');
+    msg.className = 'validation-message success';
+    msg.textContent = message;
+    group.appendChild(msg);
+}
+
+function mostrarMensagem(texto, tipo) {
+    // Criar elemento de mensagem
+    const mensagem = document.createElement('div');
+    mensagem.className = `alert alert-${tipo}`;
+    mensagem.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease;
+    `;
+    
+    // Definir cores baseadas no tipo
+    if (tipo === 'success') {
+        mensagem.style.backgroundColor = '#28a745';
+    } else if (tipo === 'error') {
+        mensagem.style.backgroundColor = '#dc3545';
+    } else if (tipo === 'warning') {
+        mensagem.style.backgroundColor = '#ffc107';
+        mensagem.style.color = '#212529';
+    }
+    
+    mensagem.textContent = texto;
+    document.body.appendChild(mensagem);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        mensagem.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (mensagem.parentNode) {
+                mensagem.parentNode.removeChild(mensagem);
+            }
+        }, 300);
+    }, 5000);
+}
+
+// Adicionar animações CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+
+
+
+let acaoAtual = '';
+let apuracaoId = null;
+
+// Função para calcular totais em tempo real
+function calcularTotais() {
+    const verbaScann = parseFloat(document.getElementById('verba_scann').value) || 0;
+    const verbaPlanoNegocios = parseFloat(document.getElementById('verba_plano_negocios').value) || 0;
+    const verbaTimeAmbev = parseFloat(document.getElementById('verba_time_ambev').value) || 0;
+    const verbaOutrasReceitas = parseFloat(document.getElementById('verba_outras_receitas').value) || 0;
+    const outrosCustos = parseFloat(document.getElementById('outros_custos').value) || 0;
+    
+    // Valores calculados do backend
+    const receitaTotal = {{ receita_calculada or 0 }};
+    const custoProdutos = {{ cpv_calculado or 0 }};
+    
+    // Calcular totais
+    const totalVerbas = verbaScann + verbaPlanoNegocios + verbaTimeAmbev + verbaOutrasReceitas;
+    const margemBruta = receitaTotal - custoProdutos;
+    const resultadoLiquido = margemBruta + totalVerbas - outrosCustos;
+    
+    // Atualizar display
+    document.getElementById('receita-total').textContent = `R$ ${receitaTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    document.getElementById('custo-produtos').textContent = `R$ ${custoProdutos.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    document.getElementById('receitas-adicionais').textContent = `R$ ${totalVerbas.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    document.getElementById('custos-operacionais').textContent = `R$ ${outrosCustos.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    document.getElementById('resultado-liquido').textContent = `R$ ${resultadoLiquido.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+}
+
+// Adicionar event listeners para cálculo em tempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = ['verba_scann', 'verba_plano_negocios', 'verba_time_ambev', 'verba_outras_receitas', 'outros_custos'];
+    inputs.forEach(id => {
+        document.getElementById(id).addEventListener('input', calcularTotais);
+    });
+    
+    // Event listeners para formulário de previsão
+    const previsaoInputs = ['previsao_verba_scann', 'previsao_verba_plano_negocios', 'previsao_verba_time_ambev', 'previsao_verba_outras_receitas'];
+    previsaoInputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', calcularTotaisPrevisao);
+        }
+    });
+    
+    // Verificar se a apuração é definitiva
+    {% if apuracao_existente %}
+        {% if apuracao_existente.definitivo %}
+        // Desabilitar campos se for definitiva
+        inputs.forEach(id => {
+            const input = document.getElementById(id);
+            input.disabled = true;
+            input.style.backgroundColor = '#f8f9fa';
+            input.style.cursor = 'not-allowed';
+        });
+        
+        // Mostrar mensagem de apuração definitiva
+        const formActions = document.querySelector('.form-actions');
+        const mensagemDefinitiva = document.createElement('div');
+        mensagemDefinitiva.innerHTML = `
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                <strong>🔒 Apuração Definitiva</strong><br>
+                Esta apuração foi marcada como definitiva e não pode ser alterada sem senha do administrador.
+            
+        `;
+        formActions.parentNode.insertBefore(mensagemDefinitiva, formActions);
+        
+        // Alterar texto dos botões
+        const btnSalvar = document.querySelector('.btn-save');
+        const btnDefinitivo = document.querySelector('.btn-save-definitivo');
+        btnSalvar.textContent = 'Editar (Requer Senha)';
+        btnSalvar.onclick = salvarDefinitivo;
+        btnDefinitivo.textContent = 'Editar Definitiva';
+        {% endif %}
+    {% endif %}
+    
+    // Calcular totais iniciais
+    calcularTotais();
+});
+
+function salvarApuração() {
+    const formData = new FormData();
+    formData.append('verba_scann', document.getElementById('verba_scann').value);
+    formData.append('verba_plano_negocios', document.getElementById('verba_plano_negocios').value);
+    formData.append('verba_time_ambev', document.getElementById('verba_time_ambev').value);
+    formData.append('verba_outras_receitas', document.getElementById('verba_outras_receitas').value);
+    formData.append('outros_custos', document.getElementById('outros_custos').value);
+    
+    // Se for uma apuração existente, salvar via AJAX
+    {% if apuracao_existente %}
+    fetch('/apuracao/salvar/{{ apuracao_existente.id }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Apuração salva com sucesso!');
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar apuração');
+    });
+    {% else %}
+    // Se for nova apuração, adicionar campos necessários e submeter
+    formData.append('mes', document.querySelector('input[name="mes"]').value);
+    formData.append('ano', document.querySelector('input[name="ano"]').value);
+    formData.append('definitivo', 'false');
+    
+    fetch('/apuracao/nova', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            return response.json();
+        }
+    })
+    .then(data => {
+        if (data && data.success) {
+            alert('Apuração criada com sucesso!');
+            window.location.reload();
+        } else if (data) {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar apuração');
+    });
+    {% endif %}
+}
+
+function salvarDefinitivo() {
+    acaoAtual = 'definitivo';
+    document.getElementById('modalTitle').textContent = '🔒 Salvar como Definitivo';
+    document.getElementById('modalMessage').textContent = 'ATENÇÃO: Esta ação tornará a apuração definitiva e não poderá ser alterada sem senha do administrador. Para continuar, insira a senha do administrador.';
+    document.getElementById('modalSenha').style.display = 'block';
+    document.getElementById('senhaAdmin').focus();
+}
+
+function fecharModal() {
+    document.getElementById('modalSenha').style.display = 'none';
+    document.getElementById('formSenha').reset();
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+    acaoAtual = '';
+    apuracaoId = null;
+}
+
+function confirmarAcao() {
+    const senha = document.getElementById('senhaAdmin').value;
+    const errorMessage = document.getElementById('errorMessage');
+    const loading = document.getElementById('loading');
+    const btnConfirmar = document.getElementById('btnConfirmar');
+    
+    if (!senha) {
+        errorMessage.textContent = 'Por favor, insira a senha.';
+        errorMessage.style.display = 'block';
+        return;
+    }
+    
+    // Mostrar loading
+    loading.style.display = 'block';
+    btnConfirmar.disabled = true;
+    errorMessage.style.display = 'none';
+    
+    const formData = new FormData();
+    formData.append('senha', senha);
+    formData.append('verba_scann', document.getElementById('verba_scann').value);
+    formData.append('verba_plano_negocios', document.getElementById('verba_plano_negocios').value);
+    formData.append('verba_time_ambev', document.getElementById('verba_time_ambev').value);
+    formData.append('verba_outras_receitas', document.getElementById('verba_outras_receitas').value);
+    formData.append('outros_custos', document.getElementById('outros_custos').value);
+    
+    let url = '';
+    {% if apuracao_existente %}
+        {% if apuracao_existente.definitivo %}
+            url = '/apuracao/editar_definitiva/{{ apuracao_existente.id }}';
+        {% else %}
+            url = '/apuracao/tornar_definitiva/{{ apuracao_existente.id }}';
+        {% endif %}
+    {% else %}
+        // Para nova apuração, adicionar campo definitivo
+        formData.append('definitivo', 'true');
+        url = '/apuracao/nova';
+    {% endif %}
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+        btnConfirmar.disabled = false;
+        
+        if (data.success) {
+            fecharModal();
+            alert(data.message);
+            // Recarregar a página para mostrar as mudanças
+            window.location.reload();
+        } else {
+            errorMessage.textContent = data.message || 'Senha incorreta.';
+            errorMessage.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        btnConfirmar.disabled = false;
+        errorMessage.textContent = 'Erro ao processar a solicitação.';
+        errorMessage.style.display = 'block';
+        console.error('Erro:', error);
+    });
+}
+
+// Fechar modal ao clicar fora dele
+window.onclick = function(event) {
+    const modal = document.getElementById('modalSenha');
+    if (event.target === modal) {
+        fecharModal();
+    }
+}
+
+// Permitir confirmação com Enter
+document.getElementById('senhaAdmin').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        confirmarAcao();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Lançar Pagamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f1f4f9;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #2c3e50;
+        }
+
+        form {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            max-width: 500px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #1a252f;
+        }
+
+        .voltar {
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        .voltar:hover {
+            color: #000;
+        }
+
+        ul {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 30px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        li {
+            padding: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>💳 Lançar Pagamento para Pedido #{{ pedido.id }}</h1>
+    <p><strong>Cliente:</strong> {{ pedido.cliente.nome }}</p>
+    <p><strong>Total do Pedido:</strong> R$ {{ '%.2f' % total }}</p>
+    <p><strong>Total já Pago:</strong> R$ {{ '%.2f' % pago }}</p>
+    <p><strong>Saldo Restante:</strong> R$ {{ '%.2f' % (saldo if saldo > 0 else 0) }}</p>
+
+    <form method="POST" id="form-pagamento" data-total="{{ total }}" data-pago="{{ pago }}" enctype="multipart/form-data">
+        <label for="valor">Valor a Pagar:</label>
+        <input type="text" id="valor" name="valor" inputmode="decimal" step="0.01" required>
+
+        <label for="metodo_pagamento">Método de Pagamento:</label>
+        <input type="text" id="metodo_pagamento" name="metodo_pagamento" placeholder="ex: Pix, Dinheiro, Cartão" required>
+
+        <label for="observacoes">Observações (opcional):</label>
+        <input type="text" id="observacoes" name="observacoes" placeholder="Observações sobre o pagamento">
+
+        <label for="recibo">📄 Recibo de Pagamento (opcional):</label>
+        <input type="file" id="recibo" name="recibo">
+        <small class="form-text text-muted">
+            💡 Faça upload para preenchimento automático dos dados, ou digite manualmente
+        </small>
+
+        <input type="hidden" name="id_transacao">
+
+        <button type="submit">💾 Confirmar Pagamento</button>
+    </form>
+
+    <h3>📜 Histórico de Pagamentos</h3>
+    <ul>
+        {% for p in pedido.pagamentos %}
+            <li>{{ p.data_pagamento.strftime('%d/%m/%Y %H:%M') }} - R$ {{ '%.2f' % p.valor }} - {{ p.metodo_pagamento }}{% if p.observacoes %} - {{ p.observacoes }}{% endif %}{% if p.caminho_recibo %} - <a href="{{ url_for('financeiro.ver_recibo', filename=p.caminho_recibo) }}" target="_blank">Ver Recibo</a>{% endif %}</li>
+        {% else %}
+            <li>Nenhum pagamento registrado ainda.</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('financeiro.listar_financeiro') }}" class="voltar">⬅ Voltar ao Financeiro</a>
+
+    <div id="ocr-status" style="display: none; margin-top: 15px; font-weight: bold;"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('form-pagamento');
+            const reciboInput = document.getElementById('recibo');
+            const valorInput = document.getElementById('valor');
+            const idTransacaoInput = document.querySelector('input[name="id_transacao"]');
+            const ocrStatus = document.getElementById('ocr-status');
+            const metodoPagamentoInput = document.getElementById('metodo_pagamento');
+
+            // Lógica para mostrar sugestão visual para PIX (mas NÃO tornar obrigatório)
+            metodoPagamentoInput.addEventListener('input', function() {
+                if (this.value.toLowerCase().includes('pix')) {
+                    // Apenas dica visual - NÃO bloqueia o formulário
+                    reciboInput.placeholder = "Comprovante PIX (recomendado para segurança)";
+                    reciboInput.style.border = "2px solid #ffc107";
+                    reciboInput.style.backgroundColor = "#fffbf0";
+                } else {
+                    reciboInput.placeholder = "Recibo de Pagamento (opcional)";
+                    reciboInput.style.border = "";
+                    reciboInput.style.backgroundColor = "";
+                }
+            });
+
+            // Overpayment check
+            form.addEventListener("submit", function(e) {
+                const totalPedido = parseFloat(form.dataset.total) || 0;
+                const totalPago = parseFloat(form.dataset.pago) || 0;
+                const novoValor = parseFloat(valorInput.value) || 0;
+        
+                if ((totalPago + novoValor) > totalPedido) {
+                    const confirmar = confirm("⚠️ O valor inserido excede o total do pedido.\nDeseja continuar mesmo assim?");
+                    if (!confirmar) {
+                        e.preventDefault();
+                    }
+                }
+            });
+
+            // OCR processing on file selection
+            reciboInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) {
+                    return;
+                }
+
+                ocrStatus.innerHTML = '🔍 Processando recibo com OCR...';
+                ocrStatus.style.color = '#2c3e50';
+                ocrStatus.style.display = 'block';
+
+                const formData = new FormData();
+                formData.append('recibo', file);
+
+                fetch('{{ url_for("financeiro.processar_recibo_ocr") }}', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    let foundSomething = false;
+                    ocrStatus.innerHTML = ''; // Limpa o status inicial
+
+                    // CORREÇÃO: OCR opcional e não bloqueante
+                    if (data.error) {
+                        // Erro crítico (não relacionado ao OCR)
+                        ocrStatus.textContent = `❌ Erro: ${data.error}`;
+                        ocrStatus.style.color = 'red';
+                    } else {
+                        // Verificar status do OCR
+                        const ocrStatusText = data.ocr_status || 'unknown';
+                        const ocrMessage = data.ocr_message || '';
+                        
+                        // Sempre mostrar mensagem de status do OCR
+                        const statusDiv = document.createElement('div');
+                        statusDiv.style.marginBottom = '10px';
+                        statusDiv.style.fontWeight = 'bold';
+                        
+                        if (ocrStatusText === 'success') {
+                            statusDiv.textContent = `🤖 ${ocrMessage}`;
+                            statusDiv.style.color = 'green';
+                        } else {
+                            statusDiv.textContent = `⚠️ ${ocrMessage}`;
+                            statusDiv.style.color = 'orange';
+                        }
+                        ocrStatus.appendChild(statusDiv);
+
+                        // Preencher dados se OCR funcionou
+                        if (data.valor_encontrado) {
+                            valorInput.value = data.valor_encontrado.toFixed(2);
+                            const valorStatus = document.createElement('div');
+                            valorStatus.textContent = '✅ Valor preenchido automaticamente!';
+                            valorStatus.style.color = 'green';
+                            valorStatus.style.marginTop = '5px';
+                            ocrStatus.appendChild(valorStatus);
+                            foundSomething = true;
+                        }
+
+                        if (data.id_transacao_encontrado) {
+                            idTransacaoInput.value = data.id_transacao_encontrado;
+                            const idStatus = document.createElement('div');
+                            idStatus.innerHTML = `✅ ID da Transação: <strong>${data.id_transacao_encontrado}</strong>`;
+                            idStatus.style.color = 'green';
+                            idStatus.style.marginTop = '5px';
+                            ocrStatus.appendChild(idStatus);
+                            foundSomething = true;
+                        }
+
+                        // Preencher dados extras se disponíveis
+                        if (data.data_encontrada) {
+                            const dataStatus = document.createElement('div');
+                            dataStatus.innerHTML = `📅 Data: <strong>${data.data_encontrada}</strong>`;
+                            dataStatus.style.color = 'blue';
+                            dataStatus.style.marginTop = '5px';
+                            ocrStatus.appendChild(dataStatus);
+                        }
+
+                        if (data.banco_emitente) {
+                            const bancoStatus = document.createElement('div');
+                            bancoStatus.innerHTML = `🏦 Banco: <strong>${data.banco_emitente}</strong>`;
+                            bancoStatus.style.color = 'blue';
+                            bancoStatus.style.marginTop = '5px';
+                            ocrStatus.appendChild(bancoStatus);
+                        }
+
+                        // Mensagem final baseada no que foi encontrado
+                        if (ocrStatusText === 'failed') {
+                            const manualDiv = document.createElement('div');
+                            manualDiv.textContent = '💡 Digite os dados manualmente nos campos abaixo';
+                            manualDiv.style.color = 'gray';
+                            manualDiv.style.marginTop = '10px';
+                            manualDiv.style.fontStyle = 'italic';
+                            ocrStatus.appendChild(manualDiv);
+                        } else if (!foundSomething && ocrStatusText === 'success') {
+                            const noDataDiv = document.createElement('div');
+                            noDataDiv.textContent = '⚠️ Nenhum dado encontrado no recibo. Digite manualmente.';
+                            noDataDiv.style.color = 'orange';
+                            noDataDiv.style.marginTop = '5px';
+                            ocrStatus.appendChild(noDataDiv);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro no fetch do OCR:', error);
+                    
+                    // CORREÇÃO: Erro não bloqueante
+                    ocrStatus.innerHTML = `
+                        <div style="color: orange; font-weight: bold; margin-bottom: 10px;">
+                            ⚠️ OCR temporariamente indisponível
+                        </div>
+                        <div style="color: gray; font-style: italic; margin-top: 5px;">
+                            💡 Digite os dados manualmente nos campos abaixo
+                        </div>
+                    `;
+                });
+            });
+        });
+    </script>
+    
+</body>
+</html>

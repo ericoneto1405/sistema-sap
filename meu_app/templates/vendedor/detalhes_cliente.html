@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Cliente - {{ detalhes.cliente.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">👤 {{ detalhes.cliente.nome }}</h1>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('vendedor.dashboard') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                    <a href="{{ url_for('vendedor.rankings') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-trophy"></i> Rankings
+                    </a>
+                </div>
+            </div>
+
+            <!-- Seção 1: Informações do Cliente -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-user"></i> Informações do Cliente</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Nome Completo:</strong> {{ detalhes.cliente.nome }}</p>
+                                    {% if detalhes.cliente.fantasia %}
+                                    <p><strong>Nome Fantasia:</strong> {{ detalhes.cliente.fantasia }}</p>
+                                    {% endif %}
+                                    <p><strong>Telefone:</strong> {{ detalhes.cliente.telefone or 'Não informado' }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Endereço:</strong> {{ detalhes.cliente.endereco or 'Não informado' }}</p>
+                                    <p><strong>Cidade:</strong> {{ detalhes.cliente.cidade or 'Não informado' }}</p>
+                                    {% if detalhes.cliente.cpf_cnpj %}
+                                    <p><strong>CPF/CNPJ:</strong> {{ detalhes.cliente.cpf_cnpj }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <p><strong>Data do Primeiro Pedido:</strong> 
+                                        {% if detalhes.estatisticas.primeiro_pedido %}
+                                            {{ detalhes.estatisticas.primeiro_pedido.data.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                            Nenhum pedido
+                                        {% endif %}
+                                    </p>
+                                    <p><strong>Data do Último Pedido:</strong> 
+                                        {% if detalhes.estatisticas.ultimo_pedido %}
+                                            {{ detalhes.estatisticas.ultimo_pedido.data.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                            Nenhum pedido
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 2: Resumo Estatístico -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Resumo Estatístico</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <div class="card bg-primary text-white">
+                                        <div class="card-body">
+                                            <h4>{{ detalhes.estatisticas.total_gasto|currency_brl }}</h4>
+                                            <p class="mb-0">Total Gasto</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body">
+                                            <h4>{{ detalhes.estatisticas.total_pedidos }}</h4>
+                                            <p class="mb-0">Total de Pedidos</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-info text-white">
+                                        <div class="card-body">
+                                            <h4>{{ detalhes.estatisticas.ticket_medio|currency_brl }}</h4>
+                                            <p class="mb-0">Ticket Médio</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-warning text-white">
+                                        <div class="card-body">
+                                            <h4>{{ detalhes.estatisticas.produtos_diferentes }}</h4>
+                                            <p class="mb-0">Produtos Diferentes</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 3: Histórico de Pedidos -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-history"></i> Histórico de Pedidos</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if detalhes.pedidos %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Número</th>
+                                            <th>Itens</th>
+                                            <th>Valor Total</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for pedido in detalhes.pedidos %}
+                                        <tr>
+                                            <td>{{ pedido.data.strftime('%d/%m/%Y') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('pedidos.visualizar_pedido', pedido_id=pedido.id) }}" 
+                                                   class="text-decoration-none">
+                                                    #{{ pedido.id }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        type="button" 
+                                                        data-toggle="collapse" 
+                                                        data-target="#itens-{{ pedido.id }}">
+                                                    <i class="fas fa-eye"></i> Ver Itens ({{ pedido.itens|length }})
+                                                </button>
+                                            </td>
+                                            <td class="font-weight-bold">{{ pedido.valor_total|currency_brl }}</td>
+                                            <td>
+                                                <span class="badge badge-{{ 'success' if pedido.status == 'Coleta Concluída' else 'warning' }}">
+                                                    {{ pedido.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="5">
+                                                <div class="collapse" id="itens-{{ pedido.id }}">
+                                                    <div class="card card-body">
+                                                        <table class="table table-sm">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Produto</th>
+                                                                    <th>Quantidade</th>
+                                                                    <th>Preço Unit.</th>
+                                                                    <th>Subtotal</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% for item in pedido.itens %}
+                                                                <tr>
+                                                                    <td>{{ item.produto_nome }}</td>
+                                                                    <td>{{ item.quantidade }}</td>
+                                                                    <td>{{ item.preco_unitario|currency_brl }}</td>
+                                                                    <td>{{ item.subtotal|currency_brl }}</td>
+                                                                </tr>
+                                                                {% endfor %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">Nenhum pedido encontrado</h5>
+                                <p class="text-muted">Este cliente ainda não realizou nenhum pedido.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

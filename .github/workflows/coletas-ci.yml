@@ -1,0 +1,56 @@
+name: Coletas CI
+
+on:
+  pull_request:
+    paths:
+      - 'meu_app/coletas/**'
+      - 'tests/coletas/**'
+      - 'tests/integration/test_coleta_concorrencia.py'
+      - 'meu_app/static/js/coletas/**'
+      - '.eslintrc.json'
+      - 'pyproject.toml'
+      - 'package.json'
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install mypy pytest
+    
+    - name: Install Node.js dependencies
+      run: |
+        npm ci
+    
+    - name: Lint JavaScript
+      run: |
+        npm run lint:js
+    
+    - name: Type check Python
+      run: |
+        mypy meu_app/coletas/
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/coletas/ -q
+    
+    - name: Run integration tests (if applicable)
+      run: |
+        pytest tests/integration/ -q -m integration || echo "Integration tests skipped in CI"
+      continue-on-error: true

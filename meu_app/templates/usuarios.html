@@ -1,0 +1,437 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block page_title %}Usuários{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>👥 Gerenciar Usuários</h2>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="nome">Nome do Usuário</label>
+            <input type="text" id="nome" name="nome" required>
+        </div>
+
+        <div class="form-group">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" required>
+        </div>
+
+        <div class="form-group">
+            <label for="tipo">Tipo de Usuário</label>
+            <select id="tipo" name="tipo" required>
+                <option value="comum">Comum</option>
+                <option value="admin">Administrador</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Permissões de Acesso</label>
+            <div class="checkboxes">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="acesso_clientes"> 
+                    <span>👥 Clientes</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="acesso_produtos"> 
+                    <span>📦 Produtos</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="acesso_pedidos"> 
+                    <span>Pedidos</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="acesso_financeiro"> 
+                    <span>💰 Financeiro</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="acesso_logistica"> 
+                                            <span>Coletas</span>
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success">➕ Criar Usuário</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>👥 Usuários Cadastrados</h3>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Permissões</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in usuarios %}
+            <tr>
+                <td>{{ usuario.id }}</td>
+                <td>{{ usuario.nome }}</td>
+                <td>
+                    {% if usuario.tipo == 'admin' %}
+                        <span class="badge badge-admin">👤 Admin</span>
+                    {% else %}
+                        <span class="badge badge-user">👨‍💼 Comum</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="permissions">
+                        {% if usuario.acesso_clientes %}<span class="permission">👥</span>{% endif %}
+                        {% if usuario.acesso_produtos %}<span class="permission">📦</span>{% endif %}
+                        {% if usuario.acesso_pedidos %}<span class="permission">P</span>{% endif %}
+                        {% if usuario.acesso_financeiro %}<span class="permission">💰</span>{% endif %}
+                        {% if usuario.acesso_logistica %}<span class="permission">L</span>{% endif %}
+                    </div>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <!-- Botão Editar -->
+                        <button onclick="abrirModalEditarUsuario({{ usuario.id }}, '{{ usuario.nome }}', '{{ usuario.tipo }}', {
+                            'acesso_clientes': {{ usuario.acesso_clientes|lower }},
+                            'acesso_produtos': {{ usuario.acesso_produtos|lower }},
+                            'acesso_pedidos': {{ usuario.acesso_pedidos|lower }},
+                            'acesso_financeiro': {{ usuario.acesso_financeiro|lower }},
+                            'acesso_logistica': {{ usuario.acesso_logistica|lower }}
+                        }})" class="btn btn-primary btn-sm">✏️ Editar</button>
+                        
+                        <!-- Botão Alterar Senha -->
+                        <button onclick="abrirModalAlterarSenha({{ usuario.id }}, '{{ usuario.nome }}')" class="btn btn-warning btn-sm">🔑 Senha</button>
+                        
+                        <!-- Botão Redefinir Senha (apenas para admins) -->
+                        {% if session.usuario_tipo == 'admin' %}
+                        <button onclick="abrirModalRedefinirSenha({{ usuario.id }}, '{{ usuario.nome }}')" class="btn btn-info btn-sm">🔄 Redefinir</button>
+                        {% endif %}
+                        
+                        <!-- Botão Excluir -->
+                        {% if usuario.nome != 'admin' %}
+                            <a href="{{ url_for('usuarios.excluir_usuario', id=usuario.id) }}" class="btn btn-danger btn-sm" 
+                               onclick="return confirm('Tem certeza que deseja excluir este usuário?')">🗑️ Excluir</a>
+                        {% else %}
+                            <span class="protected-user">Protegido</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center">Nenhum usuário cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Editar Usuário -->
+<div id="modalEditarUsuario" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">✏️ Editar Usuário</h3>
+            <span class="close" onclick="fecharModal('modalEditarUsuario')">&times;</span>
+        </div>
+        <form id="formEditarUsuario" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editNome">Nome do Usuário</label>
+                    <input type="text" id="editNome" name="nome" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editTipo">Tipo de Usuário</label>
+                    <select id="editTipo" name="tipo" required>
+                        <option value="comum">Comum</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Permissões de Acesso</label>
+                    <div class="checkboxes">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="acesso_clientes" id="editAcessoClientes"> 
+                            <span>👥 Clientes</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="acesso_produtos" id="editAcessoProdutos"> 
+                            <span>📦 Produtos</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="acesso_pedidos" id="editAcessoPedidos"> 
+                            <span>P Pedidos</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="acesso_financeiro" id="editAcessoFinanceiro"> 
+                            <span>💰 Financeiro</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="acesso_logistica" id="editAcessoLogistica"> 
+                            <span>L Coletas</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="fecharModal('modalEditarUsuario')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Alterar Senha -->
+<div id="modalAlterarSenha" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">🔑 Alterar Senha</h3>
+            <span class="close" onclick="fecharModal('modalAlterarSenha')">&times;</span>
+        </div>
+        <form id="formAlterarSenha" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="senhaAtual">Senha Atual</label>
+                    <input type="password" id="senhaAtual" name="senha_atual" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="novaSenha">Nova Senha</label>
+                    <input type="password" id="novaSenha" name="nova_senha" required>
+                    <small class="form-text">Mínimo 6 caracteres, deve conter letras e números</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmarSenha">Confirmar Nova Senha</label>
+                    <input type="password" id="confirmarSenha" name="confirmar_senha" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="fecharModal('modalAlterarSenha')">Cancelar</button>
+                <button type="submit" class="btn btn-warning">Alterar Senha</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Redefinir Senha -->
+<div id="modalRedefinirSenha" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">🔄 Redefinir Senha</h3>
+            <span class="close" onclick="fecharModal('modalRedefinirSenha')">&times;</span>
+        </div>
+        <form id="formRedefinirSenha" method="POST">
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <strong>⚠️ Aviso:</strong> Esta ação redefinirá a senha do usuário. 
+                    O usuário precisará usar a nova senha no próximo login.
+                </div>
+                
+                <div class="form-group">
+                    <label for="senhaAdmin">Sua Senha de Administrador</label>
+                    <input type="password" id="senhaAdmin" name="senha_admin" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="novaSenhaRedefinir">Nova Senha</label>
+                    <input type="password" id="novaSenhaRedefinir" name="nova_senha" required>
+                    <small class="form-text">Mínimo 6 caracteres, deve conter letras e números</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="fecharModal('modalRedefinirSenha')">Cancelar</button>
+                <button type="submit" class="btn btn-info">Redefinir Senha</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+    font-size: 0.8em;
+    padding: 4px 8px;
+}
+
+.protected-user {
+    color: #666;
+    font-style: italic;
+}
+
+.permissions {
+    display: flex;
+    gap: 5px;
+}
+
+.permission {
+    font-size: 1.2em;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.badge-admin {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-user {
+    background-color: #6c757d;
+    color: white;
+}
+
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-title {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background-color: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+}
+
+.form-text {
+    color: #6c757d;
+    font-size: 0.875em;
+}
+
+.alert {
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+</style>
+
+<script>
+let usuarioIdAtual = null;
+
+function abrirModalEditarUsuario(id, nome, tipo, acessos) {
+    usuarioIdAtual = id;
+    
+    document.getElementById('editNome').value = nome;
+    document.getElementById('editTipo').value = tipo;
+    
+    document.getElementById('editAcessoClientes').checked = acessos.acesso_clientes;
+    document.getElementById('editAcessoProdutos').checked = acessos.acesso_produtos;
+    document.getElementById('editAcessoPedidos').checked = acessos.acesso_pedidos;
+    document.getElementById('editAcessoFinanceiro').checked = acessos.acesso_financeiro;
+    document.getElementById('editAcessoLogistica').checked = acessos.acesso_logistica;
+    
+    document.getElementById('formEditarUsuario').action = `/usuarios/editar/${id}`;
+    document.getElementById('modalEditarUsuario').style.display = 'block';
+}
+
+function abrirModalAlterarSenha(id, nome) {
+    usuarioIdAtual = id;
+    
+    document.getElementById('formAlterarSenha').action = `/usuarios/alterar_senha/${id}`;
+    document.getElementById('modalAlterarSenha').style.display = 'block';
+    
+    // Limpar campos
+    document.getElementById('senhaAtual').value = '';
+    document.getElementById('novaSenha').value = '';
+    document.getElementById('confirmarSenha').value = '';
+}
+
+function abrirModalRedefinirSenha(id, nome) {
+    usuarioIdAtual = id;
+    
+    document.getElementById('formRedefinirSenha').action = `/usuarios/redefinir_senha/${id}`;
+    document.getElementById('modalRedefinirSenha').style.display = 'block';
+    
+    // Limpar campos
+    document.getElementById('senhaAdmin').value = '';
+    document.getElementById('novaSenhaRedefinir').value = '';
+}
+
+function fecharModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    usuarioIdAtual = null;
+}
+
+// Fechar modal ao clicar fora dele
+window.onclick = function(event) {
+    const modals = ['modalEditarUsuario', 'modalAlterarSenha', 'modalRedefinirSenha'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            fecharModal(modalId);
+        }
+    });
+}
+</script>
+
+{% endblock %}
+

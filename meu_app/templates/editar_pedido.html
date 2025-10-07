@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Editar Pedido #{{ pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">✏️ Editar Pedido #{{ pedido.id }}</h2>
+        <a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary">⬅ Voltar</a>
+    </div>
+
+    <div class="alert alert-info">
+        <h5 class="alert-heading">📋 Informações do Pedido</h5>
+        <p class="mb-1"><strong>Cliente:</strong> {{ pedido.cliente.nome }}</p>
+        <p class="mb-1"><strong>Data de Criação:</strong> {{ pedido.data.strftime('%d/%m/%Y às %H:%M') }}</p>
+        <p class="mb-0"><strong>Status:</strong> <span class="badge bg-info text-dark">{{ pedido.status }}</span></p>
+    </div>
+
+    <form method="POST">
+        <div class="form-group mb-3">
+            <label for="cliente_id" class="form-label"><strong>Cliente:</strong></label>
+            <select name="cliente_id" id="cliente_id" class="form-control" required>
+                {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente.id == pedido.cliente_id %}selected{% endif %}>
+                        {{ cliente.nome }} {% if cliente.fantasia %}({{ cliente.fantasia }}){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <hr>
+
+        <h5>📦 Itens do Pedido</h5>
+        <div id="items" class="mb-3">
+            {% for item in pedido.itens %}
+            <div class="d-flex gap-2 mb-2 align-items-center">
+                <div class="flex-grow-1">
+                    <select name="produto_id[]" class="form-control select2-ajax" required>
+                        <option value="{{ item.produto.id }}" selected>{{ item.produto.nome }} {% if item.produto.codigo_interno %}({{ item.produto.codigo_interno }}){% endif %}</option>
+                    </select>
+                </div>
+                <div style="width: 100px;">
+                    <input type="number" name="quantidade[]" class="form-control" placeholder="Qtd" value="{{ item.quantidade }}" min="1" required>
+                </div>
+                <div style="width: 150px;">
+                    <input type="text" name="preco_venda" class="form-control currency-input" placeholder="Preço Venda" value="{{ item.preco_venda|string|replace(',', '.') }}" required>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">🗑️</button>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" onclick="addItem()" class="btn btn-info btn-sm">➕ Adicionar Item</button>
+
+        <hr class="mt-4">
+
+        <div class="text-end">
+            <button type="submit" class="btn btn-primary btn-lg">💾 Salvar Alterações</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+<script>
+    function setupSelect2Ajax(selector) {
+        try {
+            if (typeof $ === 'undefined' || !$.fn.select2) {
+                console.error('Select2 não está carregado.');
+                return;
+            }
+            $(selector).select2({
+                placeholder: "Digite para buscar um produto...",
+                width: '100%',
+                ajax: {
+                    url: "{{ url_for('produtos.api_produtos') }}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return { q: params.term };
+                    },
+                    processResults: function (data) {
+                        return { results: data.results };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 1,
+            });
+        } catch (error) {
+            console.error('Erro ao inicializar Select2:', error);
+        }
+    }
+
+    function addItem() {
+        try {
+            const container = document.getElementById('items');
+            if (!container) {
+                console.error('Container #items não encontrado');
+                return;
+            }
+            const itemBox = document.createElement('div');
+            itemBox.className = 'd-flex gap-2 mb-2 align-items-center';
+            
+            itemBox.innerHTML = `
+                <div class="flex-grow-1">
+                    <select name="produto_id[]" class="form-control select2-ajax" required></select>
+                </div>
+                <div style="width: 100px;">
+                    <input type="number" name="quantidade[]" class="form-control" placeholder="Qtd" min="1" required>
+                </div>
+                <div style="width: 150px;">
+                    <input type="text" name="preco_venda" class="form-control currency-input" placeholder="Preço Venda" required>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">🗑️</button>
+            `;
+            
+            container.appendChild(itemBox);
+            
+            setupSelect2Ajax($(itemBox).find('.select2-ajax'));
+
+            if (typeof CurrencyFormatter !== 'undefined') {
+                CurrencyFormatter.initializeInputs();
+            }
+        } catch (error) {
+            console.error('Erro ao adicionar item:', error);
+            alert('Ocorreu um erro ao adicionar o produto. Verifique o console para detalhes.');
+        }
+    }
+
+    $(document).ready(function() {
+        try {
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $('select[name="cliente_id"]').select2({ width: '100%' });
+
+                // Inicializa o Select2 para os produtos já existentes no pedido
+                $('.select2-ajax').each(function() {
+                    setupSelect2Ajax(this);
+                });
+            }
+            
+            if (typeof CurrencyFormatter !== 'undefined') {
+                CurrencyFormatter.initializeInputs();
+            }
+        } catch (error) {
+            console.error('Erro na inicialização do formulário de edição:', error);
+        }
+    });
+
+    function removeItem(button) {
+        button.parentElement.remove();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,677 @@
+{% extends 'base.html' %}
+
+{% block title %}Listar Pedidos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📋 Todos os Pedidos</h2>
+    <a href="{{ url_for('pedidos.novo_pedido') }}" class="btn-primary">➕ Novo Pedido</a>
+</div>
+
+<form method="get" style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+    <div>
+        <label>Status:</label><br>
+        <select name="filtro" onchange="this.form.submit()">
+            <option value="todos" {% if filtro == 'todos' %}selected{% endif %}>Todos</option>
+            <option value="aguardando comercial" {% if filtro == 'aguardando comercial' %}selected{% endif %}>Aguardando Comercial</option>
+            <option value="liberado p/ financeiro" {% if filtro == 'liberado p/ financeiro' %}selected{% endif %}>Liberado P/ Financeiro</option>
+            <option value="pendente" {% if filtro == 'pendente' %}selected{% endif %}>Pendente</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Data Inicial:</label><br>
+        <input type="date" name="data_inicio" value="{{ data_inicio }}">
+    </div>
+
+    <div>
+        <label>Data Final:</label><br>
+        <input type="date" name="data_fim" value="{{ data_fim }}">
+    </div>
+
+    <div style="align-self: flex-end;">
+        <button type="submit" class="botao">Filtrar</button>
+    </div>
+</form>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .btn-primary {
+        background: var(--accent-purple);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background: var(--accent-purple-light);
+        transform: translateY(-1px);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+    }
+
+    th, td {
+        padding: 10px;
+        border: 1px solid #ddd;
+        text-align: center;
+    }
+
+    th {
+        background-color: #2c3e50;
+        color: #ffffff !important;
+        font-weight: bold;
+        text-align: center;
+        padding: 12px 8px;
+        border: 1px solid #ddd;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    th:hover {
+        background-color: #34495e;
+        transform: translateY(-1px);
+    }
+
+    th.sortable::after {
+        content: '↕️';
+        position: absolute;
+        right: 8px;
+        opacity: 0.6;
+        font-size: 14px;
+    }
+
+    th.sort-asc::after {
+        content: '↑';
+        opacity: 1;
+        color: #4CAF50;
+    }
+
+    th.sort-desc::after {
+        content: '↓';
+        opacity: 1;
+        color: #FF9800;
+    }
+
+    th.sortable:hover::after {
+        opacity: 1;
+    }
+
+    /* Destaque para cabeçalho ativo */
+    th.sort-asc,
+    th.sort-desc {
+        background-color: #34495e;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* Animação suave para mudanças de ordenação */
+    tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .status-ok {
+        color: green;
+        font-weight: bold;
+    }
+
+    .status-pendente {
+        color: red;
+        font-weight: bold;
+    }
+
+    .status-comercial {
+        color: #ffc107;
+        font-weight: bold;
+        background-color: rgba(255, 193, 7, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+    
+    /* Estilo específico para o botão VER */
+    .botao-ver {
+        display: inline-block !important;
+        padding: 8px 16px !important;
+        background-color: #007bff !important;
+        color: white !important;
+        text-decoration: none !important;
+        border-radius: 4px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        border: none !important;
+        cursor: pointer !important;
+        font-size: 14px !important;
+        line-height: 1.2 !important;
+        min-width: 60px !important;
+        text-align: center !important;
+    }
+    
+    .botao-ver:hover {
+        background-color: #0056b3 !important;
+        color: white !important;
+        text-decoration: none !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    }
+    
+    /* Garantir que a célula da tabela seja visível */
+    td:has(.botao-ver) {
+        padding: 8px !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+    
+    /* Forçar visibilidade do botão */
+    .botao-ver {
+        position: relative !important;
+        z-index: 10 !important;
+        pointer-events: auto !important;
+    }
+    
+    /* Debug: destacar o botão */
+    .botao-ver {
+        border: 2px solid red !important;
+        background-color: #ff0000 !important;
+    }
+
+    .status-financeiro {
+        color: #28a745;
+        font-weight: bold;
+        background-color: rgba(40, 167, 69, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+        height: 16px;
+        fill: currentColor;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 30px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+
+    .close:hover {
+        color: #2c3e50;
+    }
+
+    .modal-body {
+        margin-bottom: 25px;
+    }
+
+    .modal-message {
+        font-size: 1rem;
+        color: #6c757d;
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+
+    .btn-primary {
+        background-color: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #5a67d8;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c82333;
+    }
+
+    .error-message {
+        color: #dc3545;
+        font-size: 0.9rem;
+        margin-top: 8px;
+        display: none;
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    .spinner {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #667eea;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<table>
+    <thead>
+        <tr>
+            <th class="sortable" data-sort="id">#</th>
+            <th class="sortable" data-sort="cliente">CLIENTE</th>
+            <th class="sortable" data-sort="data">DATA E HORA</th>
+            <th class="sortable" data-sort="valor">VALOR DO PEDIDO</th>
+            <th class="sortable" data-sort="status">STATUS</th>
+            <th>VER PEDIDO</th>
+            <th>AÇÕES</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in pedidos %}
+        <tr id="linha-pedido-{{ item.pedido.id }}">
+            <td>#{{ item.pedido.id }}</td>
+            <td>{{ item.pedido.cliente.nome }}</td>
+            <td>{{ item.pedido.data.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>R$ {{ '%.2f' % item.total_venda }}</td>
+            <td class="{{ 'status-financeiro' if item.status == 'LIBERADO P/ FINANCEIRO' else 'status-comercial' if item.status == 'Aguardando Comercial' else 'status-pendente' }}">
+                {{ item.status }}
+            </td>
+            <td>
+                <a href="{{ url_for('pedidos.visualizar_pedido', id=item.pedido.id) }}" class="botao-ver" onclick="console.log('Botão VER clicado para pedido {{ item.pedido.id }}')">👁️ Ver</a>
+            </td>
+            <td>
+                <div class="action-icons">
+                    {% if not item.pedido.confirmado_comercial %}
+                    <button onclick="abrirModalConfirmarComercial({{ item.pedido.id }})" class="icon-btn icon-confirm" title="Confirmar pedido (Comercial)">
+                        <svg class="icon-svg" viewBox="0 0 24 24">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                    <button onclick="abrirModalEditar({{ item.pedido.id }})" class="icon-btn icon-edit" title="Editar pedido">
+                        <svg class="icon-svg" viewBox="0 0 24 24">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                    </button>
+                    <button onclick="abrirModalExcluir({{ item.pedido.id }})" class="icon-btn icon-delete" title="Excluir pedido">
+                        <svg class="icon-svg" viewBox="0 0 24 24">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">Nenhum pedido encontrado com os filtros aplicados.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Modal de Confirmação -->
+<div id="modalConfirmacao" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">🔐 Confirmação de Senha</h3>
+            <span class="close" onclick="fecharModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p class="modal-message" id="modalMessage">
+                Para continuar com esta ação, é necessário inserir a senha do administrador.
+            </p>
+            <form id="formSenha">
+                <div class="form-group">
+                    <label for="senhaAdmin">Senha do Administrador:</label>
+                    <input type="password" id="senhaAdmin" name="senha" required>
+                    <div class="error-message" id="errorMessage"></div>
+                </div>
+            </form>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Verificando senha...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btnConfirmar" onclick="confirmarAcao()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<a href="{{ url_for('main.painel') }}" class="botao">⬅ Voltar ao Painel</a>
+
+<script>
+let acaoAtual = '';
+let pedidoId = null;
+
+function abrirModalEditar(id) {
+    acaoAtual = 'editar';
+    pedidoId = id;
+    document.getElementById('modalTitle').textContent = '✏️ Editar Pedido';
+    document.getElementById('modalMessage').textContent = 'Para editar este pedido, insira a senha do administrador.';
+    document.getElementById('btnConfirmar').textContent = 'Editar Pedido';
+    document.getElementById('btnConfirmar').className = 'btn btn-primary';
+    document.getElementById('modalConfirmacao').style.display = 'block';
+    document.getElementById('senhaAdmin').focus();
+}
+
+function abrirModalExcluir(id) {
+    acaoAtual = 'excluir';
+    pedidoId = id;
+    document.getElementById('modalTitle').textContent = '🗑️ Excluir Pedido';
+    document.getElementById('modalMessage').textContent = 'ATENÇÃO: Esta ação é irreversível! Para excluir este pedido, insira a senha do administrador.';
+    document.getElementById('btnConfirmar').textContent = 'Excluir Pedido';
+    document.getElementById('btnConfirmar').className = 'btn btn-danger';
+    document.getElementById('modalConfirmacao').style.display = 'block';
+    document.getElementById('senhaAdmin').focus();
+}
+
+function abrirModalConfirmarComercial(id) {
+    acaoAtual = 'confirmar_comercial';
+    pedidoId = id;
+    document.getElementById('modalTitle').textContent = '✅ Confirmar Pedido (Comercial)';
+    document.getElementById('modalMessage').textContent = 'Para confirmar este pedido e liberá-lo para análise financeira, insira a senha do administrador.';
+    document.getElementById('btnConfirmar').textContent = 'Confirmar Pedido';
+    document.getElementById('btnConfirmar').className = 'btn btn-success';
+    document.getElementById('modalConfirmacao').style.display = 'block';
+    document.getElementById('senhaAdmin').focus();
+}
+
+function fecharModal() {
+    document.getElementById('modalConfirmacao').style.display = 'none';
+    document.getElementById('formSenha').reset();
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+    acaoAtual = '';
+    pedidoId = null;
+}
+
+function confirmarAcao() {
+    const senha = document.getElementById('senhaAdmin').value;
+    const errorMessage = document.getElementById('errorMessage');
+    const loading = document.getElementById('loading');
+    const btnConfirmar = document.getElementById('btnConfirmar');
+    
+    if (!senha) {
+        errorMessage.textContent = 'Por favor, insira a senha.';
+        errorMessage.style.display = 'block';
+        return;
+    }
+    
+    // Mostrar loading
+    loading.style.display = 'block';
+    btnConfirmar.disabled = true;
+    errorMessage.style.display = 'none';
+    
+    let url = '';
+    if (acaoAtual === 'editar') {
+        url = `/pedidos/editar/${pedidoId}/confirmar`;
+    } else if (acaoAtual === 'excluir') {
+        url = `/pedidos/excluir/${pedidoId}/confirmar`;
+    } else if (acaoAtual === 'confirmar_comercial') {
+        url = `/pedidos/confirmar_comercial/${pedidoId}`;
+    }
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `senha=${encodeURIComponent(senha)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+        btnConfirmar.disabled = false;
+        
+        if (data.success) {
+            if (acaoAtual === 'editar') {
+                window.location.href = data.redirect_url;
+            } else if (acaoAtual === 'excluir') {
+                fecharModal();
+                // Remover a linha da tabela
+                const linha = document.getElementById(`linha-pedido-${pedidoId}`);
+                if (linha) {
+                    linha.remove();
+                }
+                // Mostrar mensagem de sucesso
+                alert('Pedido excluído com sucesso!');
+            } else if (acaoAtual === 'confirmar_comercial') {
+                fecharModal();
+                // Recarregar a página para atualizar o status
+                window.location.reload();
+                // Mostrar mensagem de sucesso
+                alert('Pedido confirmado com sucesso!');
+            }
+        } else {
+            errorMessage.textContent = data.message || 'Senha incorreta.';
+            errorMessage.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        btnConfirmar.disabled = false;
+        errorMessage.textContent = 'Erro ao processar a solicitação.';
+        errorMessage.style.display = 'block';
+        console.error('Erro:', error);
+    });
+}
+
+// Fechar modal ao clicar fora dele
+window.onclick = function(event) {
+    const modal = document.getElementById('modalConfirmacao');
+    if (event.target === modal) {
+        fecharModal();
+    }
+}
+
+// Permitir confirmação com Enter
+document.getElementById('senhaAdmin').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        confirmarAcao();
+    }
+});
+
+// ===== FUNCIONALIDADE DE ORDENAÇÃO =====
+// Variáveis de controle de ordenação
+let currentSort = '{{ current_sort }}';
+let currentDirection = '{{ current_direction }}';
+
+// Função para ordenar
+function sortTable(column) {
+    // Determinar nova direção
+    if (currentSort === column) {
+        currentDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort = column;
+        currentDirection = 'asc';
+    }
+    
+    // Atualizar indicadores visuais
+    updateSortIndicators();
+    
+    // Recarregar página com novos parâmetros
+    const url = new URL(window.location);
+    url.searchParams.set('sort', currentSort);
+    url.searchParams.set('direction', currentDirection);
+    
+    // Mostrar loading
+    showLoading();
+    
+    window.location.href = url.toString();
+}
+
+// Função para atualizar indicadores visuais
+function updateSortIndicators() {
+    // Remover todas as classes de ordenação
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    // Adicionar classe ao cabeçalho atual
+    const currentHeader = document.querySelector(`th[data-sort="${currentSort}"]`);
+    if (currentHeader) {
+        currentHeader.classList.add(`sort-${currentDirection}`);
+    }
+}
+
+// Função para mostrar loading
+function showLoading() {
+    const tbody = document.querySelector('tbody');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;"><div class="spinner"></div><br>Ordenando dados...</td></tr>';
+    }
+}
+
+// Adicionar event listeners aos cabeçalhos
+document.addEventListener('DOMContentLoaded', function() {
+    // Atualizar indicadores
+    updateSortIndicators();
+    
+    // Adicionar event listeners
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', function() {
+            const column = this.getAttribute('data-sort');
+            sortTable(column);
+        });
+        
+        // Adicionar feedback visual no hover
+        th.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('sort-asc') && !this.classList.contains('sort-desc')) {
+                this.style.background = '#34495e';
+            }
+        });
+        
+        th.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('sort-asc') && !this.classList.contains('sort-desc')) {
+                this.style.background = '#2c3e50';
+            }
+        });
+    });
+    
+    // Adicionar tooltip informativo
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.title = 'Clique para ordenar (crescente/decrescente)';
+    });
+});
+</script>
+{% endblock %}

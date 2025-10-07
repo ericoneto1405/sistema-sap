@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Controle de Estoque - SAP{% endblock %}
+{% block page_title %}Controle de Estoque{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h2>Controle de Estoque</h2>
+        <div class="header-actions">
+            <a href="{{ url_for('estoques.novo_estoque') }}" class="btn btn-primary">
+                <span class="icon">➕</span>
+                Adicionar ao Estoque
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Descrição</th>
+                    <th>Data de Modificação</th>
+                    <th>Conferente</th>
+                    <th>Status</th>
+                    <th>Estoque Atual</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for estoque in estoques %}
+                <tr>
+                    <td>
+                        <div class="product-info">
+                            <a href="{{ url_for('estoques.historico_movimentacao', produto_id=estoque.produto.id) }}" 
+                               target="_blank" class="product-link" title="Ver histórico de movimentação">
+                                <span class="product-name">{{ estoque.produto.nome }}</span>
+                                {% if estoque.produto.codigo_interno %}
+                                <span class="product-code">Código: {{ estoque.produto.codigo_interno }}</span>
+                                {% endif %}
+                                <span class="history-icon">📊</span>
+                            </a>
+                        </div>
+                    </td>
+                    <td>{{ estoque.data_modificacao.strftime('%d/%m/%Y %H:%M') if estoque.data_modificacao else 'N/A' }}</td>
+                    <td>{{ estoque.conferente }}</td>
+                    <td>
+                        <span class="status-badge status-{{ estoque.status.lower().replace(' ', '-') }}">
+                            {{ estoque.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="quantity-badge">{{ estoque.quantidade }}</span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('estoques.editar_estoque', id=estoque.id) }}" class="btn-icon btn-edit" title="Editar">
+                                <svg class="icon-svg" viewBox="0 0 24 24">
+                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                </svg>
+                            </a>
+                            <a href="{{ url_for('estoques.excluir_estoque', id=estoque.id) }}" class="btn-icon btn-delete" title="Excluir" 
+                               onclick="return confirm('Tem certeza que deseja excluir este registro de estoque?')">
+                                <svg class="icon-svg" viewBox="0 0 24 24">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="no-data">
+                        <div class="empty-state">
+                            <span class="empty-icon">📦</span>
+                            <p>Nenhum registro de estoque encontrado</p>
+                            <a href="{{ url_for('estoques.novo_estoque') }}" class="btn btn-primary">Criar primeiro registro</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.product-link {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.product-link:hover {
+    background-color: #f8f9fa;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.product-link .history-icon {
+    font-size: 0.9em;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.product-link:hover .history-icon {
+    opacity: 1;
+}
+
+.product-name {
+    font-weight: 500;
+}
+
+.product-code {
+    font-size: 0.85em;
+    color: #666;
+    margin-left: 8px;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Inicializar tooltips
+    $('[title]').tooltip();
+    
+    // Adicionar classes para estilização
+    $('.quantity-badge').each(function() {
+        var quantity = parseInt($(this).text());
+        if (quantity <= 10) {
+            $(this).addClass('low-stock');
+        } else if (quantity <= 50) {
+            $(this).addClass('medium-stock');
+        } else {
+            $(this).addClass('high-stock');
+        }
+    });
+});
+</script>
+{% endblock %}

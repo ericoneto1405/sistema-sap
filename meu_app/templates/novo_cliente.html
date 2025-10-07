@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if cliente %}Editar Cliente{% else %}Novo Cliente{% endif %}{% endblock %}
+
+{% block page_title %}{% if cliente %}Editar Cliente{% else %}Novo Cliente{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h2>{% if cliente %}✏️ Editar Cliente{% else %}➕ Novo Cliente{% endif %}</h2>
+    
+    <!-- Mensagens de erro/sucesso -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    <strong>{{ '❌ Erro:' if category == 'error' else '✅ Sucesso:' }}</strong> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <form method="POST" id="form-cliente">
+        <div class="form-group mb-3">
+            <label for="nome" class="form-label">
+                Nome <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="nome" name="nome" class="form-control" 
+                   value="{{ cliente.nome if cliente else '' }}" 
+                   required
+                   placeholder="Digite o nome completo">
+            <div class="invalid-feedback" id="nome-error"></div>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="fantasia" class="form-label">Fantasia</label>
+            <input type="text" id="fantasia" name="fantasia" class="form-control" 
+                   value="{{ cliente.fantasia if cliente else '' }}"
+                   placeholder="Nome fantasia (opcional)">
+            <div class="invalid-feedback" id="fantasia-error"></div>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="telefone" class="form-label">
+                Telefone <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="telefone" name="telefone" class="form-control" 
+                   value="{{ cliente.telefone if cliente else '' }}"
+                   required
+                   placeholder="(11) 99999-9999 ou (11) 3333-4444"
+                   maxlength="15">
+            <div class="form-text">Digite o telefone com 10 ou 11 dígitos</div>
+            <div class="invalid-feedback" id="telefone-error"></div>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="endereco" class="form-label">
+                Endereço <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="endereco" name="endereco" class="form-control" 
+                   value="{{ cliente.endereco if cliente else '' }}"
+                   required
+                   placeholder="Rua, número, complemento">
+            <div class="invalid-feedback" id="endereco-error"></div>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="cidade" class="form-label">
+                Cidade <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="cidade" name="cidade" class="form-control" 
+                   value="{{ cliente.cidade if cliente else '' }}"
+                   required
+                   placeholder="Nome da cidade">
+            <div class="invalid-feedback" id="cidade-error"></div>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="cpf_cnpj" class="form-label">CPF/CNPJ</label>
+            <input type="text" id="cpf_cnpj" name="cpf_cnpj" class="form-control" 
+                   value="{{ cliente.cpf_cnpj if cliente else '' }}"
+                   placeholder="000.000.000-00 ou 00.000.000/0000-00">
+            <div class="form-text">CPF (11 dígitos) ou CNPJ (14 dígitos)</div>
+            <div class="invalid-feedback" id="cpf_cnpj-error"></div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-between">
+            <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-secondary">⬅ Voltar</a>
+            <button type="submit" class="btn btn-success" id="btn-salvar">
+                <span class="btn-text">💾 Salvar Cliente</span>
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+}
+
+.form-control.is-invalid ~ .invalid-feedback {
+    display: block;
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+#btn-salvar:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.alert {
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form-cliente');
+    const btnSalvar = document.getElementById('btn-salvar');
+    const btnText = btnSalvar.querySelector('.btn-text');
+    const spinner = btnSalvar.querySelector('.spinner-border');
+    
+    // Validação de telefone em tempo real
+    const telefoneInput = document.getElementById('telefone');
+    telefoneInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+        
+        if (value.length <= 11) {
+            if (value.length <= 2) {
+                value = value;
+            } else if (value.length <= 6) {
+                value = value.replace(/^(\d{2})(\d)/, '($1) $2');
+            } else if (value.length <= 10) {
+                value = value.replace(/^(\d{2})(\d{4})(\d)/, '($1) $2-$3');
+            } else {
+                value = value.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            }
+        }
+        
+        e.target.value = value;
+        validateField(e.target);
+    });
+    
+    // Validação de CPF/CNPJ
+    const cpfCnpjInput = document.getElementById('cpf_cnpj');
+    cpfCnpjInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        
+        if (value.length <= 11) {
+            // CPF
+            value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        } else if (value.length <= 14) {
+            // CNPJ
+            value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        }
+        
+        e.target.value = value;
+    });
+    
+    // Validação individual de campos
+    function validateField(field) {
+        const value = field.value.trim();
+        const fieldName = field.name;
+        let isValid = true;
+        let errorMessage = '';
+        
+        // Remover classes de erro anteriores
+        field.classList.remove('is-invalid');
+        const errorDiv = document.getElementById(fieldName + '-error');
+        if (errorDiv) {
+            errorDiv.textContent = '';
+        }
+        
+        // Validações específicas
+        if (field.required && !value) {
+            isValid = false;
+            errorMessage = 'Este campo é obrigatório';
+        } else if (fieldName === 'telefone' && value) {
+            const digitsOnly = value.replace(/\D/g, '');
+            if (digitsOnly.length !== 10 && digitsOnly.length !== 11) {
+                isValid = false;
+                errorMessage = 'Telefone deve ter 10 ou 11 dígitos';
+            } else if (digitsOnly.length === 11 && digitsOnly[2] !== '9') {
+                isValid = false;
+                errorMessage = 'Celular deve começar com 9 no terceiro dígito';
+            }
+        } else if (fieldName === 'cpf_cnpj' && value) {
+            const digitsOnly = value.replace(/\D/g, '');
+            if (digitsOnly.length !== 11 && digitsOnly.length !== 14) {
+                isValid = false;
+                errorMessage = 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos';
+            }
+        }
+        
+        if (!isValid) {
+            field.classList.add('is-invalid');
+            if (errorDiv) {
+                errorDiv.textContent = errorMessage;
+            }
+        }
+        
+        return isValid;
+    }
+    
+    // Validação de todos os campos
+    function validateForm() {
+        const requiredFields = form.querySelectorAll('[required]');
+        let allValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!validateField(field)) {
+                allValid = false;
+            }
+        });
+        
+        return allValid;
+    }
+    
+    // Submissão do formulário
+    form.addEventListener('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+            // Focar no primeiro campo inválido
+            const firstInvalid = form.querySelector('.is-invalid');
+            if (firstInvalid) {
+                firstInvalid.focus();
+            }
+            return false;
+        }
+        
+        // Mostrar loading
+        btnSalvar.disabled = true;
+        btnText.textContent = 'Salvando...';
+        spinner.classList.remove('d-none');
+    });
+});
+</script>
+{% endblock %}

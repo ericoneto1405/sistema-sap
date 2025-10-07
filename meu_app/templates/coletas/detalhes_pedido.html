@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalhes do Pedido {{ detalhes.pedido.id }}{% endblock %}
+
+{% block page_title %}Detalhes do Pedido {{ detalhes.pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Informações do Pedido -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt"></i> Informações do Pedido
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>ID:</strong></td>
+                        <td>{{ detalhes.pedido.id }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cliente:</strong></td>
+                        <td>{{ detalhes.cliente.nome }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data:</strong></td>
+                        <td>{{ detalhes.pedido.data.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            <span class="badge 
+                                {% if detalhes.pedido.status.value == 'Pagamento Aprovado' %}bg-warning
+                                {% elif detalhes.pedido.status.value == 'Coleta Parcial' %}bg-info
+                                {% elif detalhes.pedido.status.value == 'Coleta Concluída' %}bg-success
+                                {% else %}bg-secondary{% endif %}">
+                                {{ detalhes.pedido.status.value }}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs"></i> Ações
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('coletas.processar_coleta', pedido_id=detalhes.pedido.id) }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-box"></i> Processar Coleta
+                    </a>
+                    <a href="{{ url_for('coletas.historico_coletas', pedido_id=detalhes.pedido.id) }}" 
+                       class="btn btn-outline-info">
+                        <i class="fas fa-history"></i> Ver Histórico
+                    </a>
+                    <a href="{{ url_for('coletas.dashboard') }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Itens do Pedido -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-list"></i> Itens do Pedido
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Quantidade</th>
+                        <th>Coletado</th>
+                        <th>Pendente</th>
+                        <th>Estoque</th>
+                        <th>Máximo</th>
+                        <th>Preço</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in detalhes.itens %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.produto.nome }}</strong>
+                                <br>
+                                <small class="text-muted">{{ item.produto.codigo_interno or 'Sem código' }}</small>
+                            </td>
+                            <td>{{ item.quantidade }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ item.quantidade_coletada }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning">{{ item.quantidade_pendente }}</span>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if item.estoque_disponivel > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ item.estoque_disponivel }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ item.quantidade_maxima_coleta }}</span>
+                            </td>
+                            <td>R$ {{ "%.2f"|format(item.preco_venda) }}</td>
+                            <td>R$ {{ "%.2f"|format(item.valor_total_venda) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-primary">
+                        <th colspan="6">Total do Pedido</th>
+                        <th>R$ {{ "%.2f"|format(detalhes.itens|sum(attribute='valor_total_venda')) }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Resumo de Coleta -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h4>{{ detalhes.itens|sum(attribute='quantidade') }}</h4>
+                <p class="mb-0">Total de Itens</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h4>{{ detalhes.itens|sum(attribute='quantidade_coletada') }}</h4>
+                <p class="mb-0">Itens Coletados</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h4>{{ detalhes.itens|sum(attribute='quantidade_pendente') }}</h4>
+                <p class="mb-0">Itens Pendentes</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

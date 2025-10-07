@@ -1,0 +1,13 @@
+Flask
+Flask-SQLAlchemy
+werkzeug
+reportlab
+pandas
+requests
+python-dotenv
+validate-docbr
+bleach
+python-magic
+# OCR Dependencies - APENAS Google Vision
+google-cloud-vision
+pdf2image

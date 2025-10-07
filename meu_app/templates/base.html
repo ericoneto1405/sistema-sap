@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <link rel="icon" href="{{ url_for('static', filename='images/logo_gerpedplus.png') }}">
+    <link rel="stylesheet" href="{{ url_for("static", filename="style.css") }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='notifications.js') }}"></script>
+    <script src="{{ url_for('static', filename='currency_format.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/pt-br.js"></script>
+    <script>moment.locale('pt-br');</script>
+    
+</head>
+<body>
+    <header class="main-header">        <div class="header-content">
+            <div class="header-left">
+                <button id="menu-toggle" class="menu-toggle">☰</button>
+                <img src="{{ url_for('static', filename='images/logo_gerpedplus.png') }}" alt="GERPEDPLUS" class="header-logo">
+            </div>
+            <div class="header-center">
+                <span class="page-title">{% block page_title %}Dashboard{% endblock %}</span>
+            </div>
+            <div class="header-right">
+                
+                                <div class="user-info">
+                    {% if session.usuario_nome %}
+                        <span>{{ session.usuario_nome }}</span>
+                        <a href="{{ url_for('main.logout') }}" class="logout-btn">Sair</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <nav class="sidebar-nav">
+            <ul class="nav-menu">
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    <a href="{{ url_for('main.painel') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                        </svg>
+                        <span class="nav-text">Dashboard</span>
+                    </a>
+                </li>
+
+                <!-- Clientes -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_clientes %}
+                <li class="nav-item">
+                    <a href="{{ url_for('clientes.listar_clientes') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01 1l-1.7 2.26A6.003 6.003 0 0 0 10 16c0 3.31 2.69 6 6 6 1.66 0 3.14-.68 4.24-1.75L20 22h2v-2zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-6H9V9c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v13h8v-2h-2.5z"/>
+                        </svg>
+                        <span class="nav-text">Clientes</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Produtos -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_produtos %}
+                <li class="nav-item">
+                    <a href="{{ url_for('produtos.listar_produtos') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                        <span class="nav-text">Produtos</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Estoques -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_produtos %}
+                <li class="nav-item">
+                    <a href="{{ url_for('estoques.listar_estoques') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                        </svg>
+                        <span class="nav-text">Estoques</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Pedidos -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_pedidos %}
+                <li class="nav-item">
+                    <a href="{{ url_for('pedidos.listar_pedidos') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                        <span class="nav-text">Pedidos</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Financeiro -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_financeiro %}
+                <li class="nav-item">
+                    <a href="{{ url_for('financeiro.listar_financeiro') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                        </svg>
+                        <span class="nav-text">Financeiro</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Coletas -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_logistica %}
+                <li class="nav-item">
+                    <a href="{{ url_for('coletas.index') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                        </svg>
+                        <span class="nav-text">Coletas</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Apuração -->
+                <li class="nav-item">
+                    <a href="{{ url_for('apuracao.listar_apuracao') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                        <span class="nav-text">Apuração</span>
+                    </a>
+                </li>
+
+
+                <!-- Painel do Vendedor -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_clientes %}
+                <li class="nav-item">
+                    <a href="{{ url_for('vendedor.dashboard') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <span class="nav-text">Painel do Vendedor</span>
+                    </a>
+                </li>
+                {% endif %}
+
+
+                <!-- Log de Atividades -->
+                <li class="nav-item">
+                    <a href="{{ url_for('log_atividades.listar_atividades') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                        <span class="nav-text">Log de Atividades</span>
+                    </a>
+                </li>
+
+                <!-- Administração -->
+                {% if session.usuario_tipo == 'admin' %}
+                <li class="nav-item">
+                    <a href="{{ url_for('usuarios.listar_usuarios') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        <span class="nav-text">Usuários</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Mensagens Flash do Flask serão processadas após carregamento do Moment.js -->
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Sistema de Notificações Personalizado -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <!-- Moment.js para formatação de datas -->
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/pt-br.js"></script>
+    <script>moment.locale('pt-br');</script>
+    
+    <!-- Scripts que dependem do Moment.js -->
+    <script>
+        // Inicializar sistema de notificações após Moment.js estar carregado
+        const notificationSystem = new NotificationSystem();
+        
+        // Mensagens Flash do Flask
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                document.addEventListener('DOMContentLoaded', function() {
+                    {% for category, message in messages %}
+                        {% if category == 'error' %}
+                            notificationSystem.error('Erro', '{{ message }}', 7000);
+                        {% elif category == 'success' %}
+                            notificationSystem.success('Sucesso', '{{ message }}', 5000);
+                        {% elif category == 'warning' %}
+                            notificationSystem.warning('Aviso', '{{ message }}', 6000);
+                        {% elif category == 'info' %}
+                            notificationSystem.info('Informação', '{{ message }}', 5000);
+                        {% else %}
+                            notificationSystem.info('Mensagem', '{{ message }}', 5000);
+                        {% endif %}
+                    {% endfor %}
+                });
+            {% endif %}
+        {% endwith %}
+    </script>
+    
+    <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
+</body>
+</html>

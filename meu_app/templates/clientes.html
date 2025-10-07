@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}Clientes{% endblock %}
+
+{% block page_title %}Clientes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>👥 Lista de Clientes</h2>
+    <div class="header-buttons">
+        <a href="{{ url_for('clientes.novo_cliente') }}" class="btn-primary">➕ Novo Cliente</a>
+        <a href="{{ url_for('main.painel') }}" class="btn-voltar">⬅ Voltar ao Painel</a>
+    </div>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .header-buttons {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .btn-primary {
+        background: #4F46E5;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background: #4338CA;
+        transform: translateY(-1px);
+    }
+
+    .btn-voltar {
+        background: none;
+        color: var(--accent-purple);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: none;
+        padding: 0;
+    }
+
+    .btn-voltar:hover {
+        text-decoration: underline;
+        color: var(--accent-purple-light);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+    }
+</style>
+
+<!-- Modal de Erro -->
+{% if error_modal %}
+<div id="errorModal" class="modal" style="display: block;">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>⚠️ Erro ao Excluir</h2>
+        <p>{{ error_modal }}</p>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .modal {
+        display: none; 
+        position: fixed; 
+        z-index: 1000; 
+        left: 0;
+        top: 0;
+        width: 100%; 
+        height: 100%; 
+        overflow: auto; 
+        background-color: rgba(0,0,0,0.6);
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto; 
+        padding: 25px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        animation: slide-down 0.3s ease-out;
+    }
+
+    @keyframes slide-down {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .close-button {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .close-button:hover,
+    .close-button:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // Lógica para controlar o modal
+    document.addEventListener('DOMContentLoaded', (event) => {
+        var modal = document.getElementById("errorModal");
+        if (modal) {
+            var span = modal.querySelector(".close-button");
+
+            // Função para fechar o modal
+            function closeModal() {
+                modal.style.display = "none";
+                // Limpar a URL para que o modal não reapareça ao recarregar
+                if (history.pushState) {
+                    var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.pushState({path:newurl}, '', newurl);
+                }
+            }
+
+            // Fechar ao clicar no (x)
+            span.onclick = function() {
+                closeModal();
+            }
+
+            // Fechar ao clicar fora do modal
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    closeModal();
+                }
+            }
+        }
+    });
+</script>
+
+<table>
+    <thead>
+        <tr>
+            <th>NOME</th>
+            <th>FANTASIA</th>
+            <th>TELEFONE</th>
+            <th>CIDADE</th>
+            <th>CPF/CNPJ</th>
+            <th>AÇÕES</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cliente in clientes %}
+        <tr>
+            <td>{{ cliente.nome }}</td>
+            <td>{{ cliente.fantasia or '-' }}</td>
+            <td>{{ cliente.telefone or '-' }}</td>
+            <td>{{ cliente.cidade or '-' }}</td>
+            <td>{{ cliente.cpf_cnpj or '-' }}</td>
+            <td>
+                <div class="action-icons">
+                    <a href="{{ url_for('clientes.editar_cliente', id=cliente.id) }}" class="icon-btn icon-edit" title="Editar cliente">
+                        <svg class="icon-svg" viewBox="0 0 24 24">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                    </a>
+                    <form method="POST" action="{{ url_for('clientes.excluir_cliente', id=cliente.id) }}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
+                        <button type="submit" class="icon-btn icon-delete" title="Excluir cliente">
+                            <svg class="icon-svg" viewBox="0 0 24 24">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">Nenhum cliente cadastrado.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{{ url_for('main.painel') }}" class="btn-voltar">⬅ Voltar ao Painel</a>
+{% endblock %}

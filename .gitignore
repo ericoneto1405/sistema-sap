@@ -1,0 +1,53 @@
+# Bancos de dados
+*.db
+*.sqlite
+*.sqlite3
+instance/sistema.db
+instance/backups/
+
+# Credenciais
+.env
+.env.local
+.env.production
+secrets.py
+
+# Uploads sensíveis
+uploads/recibos_pagamento/
+uploads/temp_recibos/
+uploads/.ocr_cache/
+instance/recibos/
+static/uploads/
+
+# Logs
+instance/logs/
+*.log
+.git-auto-commit.log
+
+# Ambientes virtuais
+venv/
+env/
+.venv
+
+# Node
+node_modules/
+package-lock.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+.Python
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# MacOS
+.DS_Store
+
+# Backups e arquivos antigos
+*.bak
+*.backup
+arquivos_removidos/
+BACKUP_LOG.txt

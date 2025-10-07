@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatório de Coletas{% endblock %}
+
+{% block page_title %}📊 Relatório de Eficiência de Coletas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-filter"></i> Filtros
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="data_inicio" class="form-label">Data Início:</label>
+                    <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
+                           value="{{ data_inicio.strftime('%Y-%m-%d') if data_inicio else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="data_fim" class="form-label">Data Fim:</label>
+                    <input type="date" class="form-control" id="data_fim" name="data_fim" 
+                           value="{{ data_fim.strftime('%Y-%m-%d') if data_fim else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="cliente_id" class="form-label">Cliente:</label>
+                    <select class="form-select" id="cliente_id" name="cliente_id">
+                        <option value="">Todos os Clientes</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}" {% if cliente_id|string == cliente.id|string %}selected{% endif %}>
+                            {{ cliente.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Filtrar
+                        </button>
+                        <a href="{{ url_for('logistica.relatorio_coletas') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Limpar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Estatísticas Gerais -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3>{{ estatisticas.total_pedidos }}</h3>
+                    <p class="mb-0">Total de Pedidos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3>{{ estatisticas.pedidos_coletados }}</h3>
+                    <p class="mb-0">Coletados Completos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3>{{ estatisticas.pedidos_parciais }}</h3>
+                    <p class="mb-0">Coletas Parciais</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3>{{ "%.1f"|format(estatisticas.tempo_medio_coleta) }}h</h3>
+                    <p class="mb-0">Tempo Médio Coleta</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rankings -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-box"></i> Top 10 Produtos Mais Coletados
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Quantidade Coletada</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for produto, quantidade in estatisticas.produtos_mais_coletados.items() %}
+                                <tr>
+                                    <td>{{ produto }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ quantidade }}</span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="2" class="text-center">Nenhum produto coletado no período</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> Top 10 Clientes Mais Ativos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Pedidos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cliente, pedidos in estatisticas.clientes_mais_ativos.items() %}
+                                <tr>
+                                    <td>{{ cliente }}</td>
+                                    <td>
+                                        <span class="badge bg-success">{{ pedidos }}</span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="2" class="text-center">Nenhum cliente no período</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Coletas por Dia -->
+    {% if estatisticas.coletas_por_dia %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar"></i> Coletas por Dia
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Quantidade de Coletas</th>
+                                    <th>Barra</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for data, quantidade in estatisticas.coletas_por_dia.items()|sort %}
+                                {% set max_qtd = estatisticas.coletas_por_dia.values()|max %}
+                                {% set percentual = (quantidade / max_qtd * 100) if max_qtd > 0 else 0 %}
+                                <tr>
+                                    <td>{{ data }}</td>
+                                    <td>{{ quantidade }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-info" 
+                                                 style="width: {{ percentual }}%">
+                                                {{ quantidade }}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Botões de Ação -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center">
+                    <a href="{{ url_for('logistica.listar_logistica', filtro='pendentes') }}" 
+                       class="btn btn-warning me-2">
+                        <i class="fas fa-list"></i> Pedidos Pendentes
+                    </a>
+                    <a href="{{ url_for('logistica.listar_logistica', filtro='coletados') }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-check"></i> Pedidos Coletados
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.badge {
+    font-size: 0.875em;
+}
+
+.table-sm td, .table-sm th {
+    padding: 0.5rem;
+}
+
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.375rem;
+}
+
+.progress-bar {
+    background-color: #0d6efd;
+    border-radius: 0.375rem;
+}
+</style>
+{% endblock %}

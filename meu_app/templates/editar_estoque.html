@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Estoque - SAP{% endblock %}
+{% block page_title %}Editar Estoque{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h2>Editar Registro de Estoque</h2>
+        <div class="header-actions">
+            <a href="{{ url_for('estoques.listar_estoques') }}" class="btn btn-secondary">
+                <span class="icon">←</span>
+                Voltar
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="form-container">
+        <form method="POST" class="form-card">
+            <div class="form-group">
+                <label for="produto_id">Descrição (Produto)</label>
+                <select name="produto_id" id="produto_id" class="form-control" required>
+                    <option value="">Selecione um produto</option>
+                    {% for produto in produtos %}
+                    <option value="{{ produto.id }}" {% if produto.id == estoque.produto_id %}selected{% endif %}>
+                        {{ produto.nome }}
+                        {% if produto.codigo_interno %} - {{ produto.codigo_interno }}{% endif %}
+                        {% if produto.ean %} (EAN: {{ produto.ean }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="quantidade">Estoque</label>
+                <input type="number" name="quantidade" id="quantidade" class="form-control" 
+                       min="0" step="1" required placeholder="Digite a quantidade em estoque"
+                       value="{{ estoque.quantidade }}">
+            </div>
+
+            <div class="form-group">
+                <label for="data_entrada">Data de Entrada</label>
+                <input type="datetime-local" name="data_entrada" id="data_entrada" class="form-control" 
+                       required value="{{ estoque.data_entrada.strftime('%Y-%m-%dT%H:%M') if estoque.data_entrada else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="conferente">Conferente</label>
+                <input type="text" name="conferente" id="conferente" class="form-control" 
+                       required placeholder="Nome do conferente"
+                       value="{{ estoque.conferente }}">
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select name="status" id="status" class="form-control" required>
+                    <option value="">Selecione o status</option>
+                    <option value="Contagem" {% if estoque.status == 'Contagem' %}selected{% endif %}>Contagem</option>
+                    <option value="Entrada por NF" {% if estoque.status == 'Entrada por NF' %}selected{% endif %}>Entrada por NF</option>
+                    <option value="Saída por coleta" {% if estoque.status == 'Saída por coleta' %}selected{% endif %}>Saída por coleta</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="observacoes">Observações</label>
+                <textarea name="observacoes" id="observacoes" class="form-control" 
+                          rows="3" placeholder="Digite observações sobre esta movimentação (opcional)"></textarea>
+            </div>
+
+            <div class="form-info">
+                <p><strong>Data da última conferência:</strong> {{ estoque.data_conferencia.strftime('%d/%m/%Y %H:%M') }}</p>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span class="icon">💾</span>
+                    Atualizar Estoque
+                </button>
+                <a href="{{ url_for('estoques.listar_estoques') }}" class="btn btn-secondary">
+                    Cancelar
+                </a>
+            </div>
+            
+            <div class="form-tip">
+                <small class="text-muted">
+                    💡 <strong>Dica:</strong> Pressione ENTER em qualquer campo para salvar rapidamente!
+                </small>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Histórico do produto -->
+<div class="info-section">
+    <div class="info-card">
+        <h3>📋 Informações do Produto</h3>
+        <div class="product-details">
+            <p><strong>Produto:</strong> {{ estoque.produto.nome }}</p>
+            {% if estoque.produto.codigo_interno %}
+            <p><strong>Código Interno:</strong> {{ estoque.produto.codigo_interno }}</p>
+            {% endif %}
+            {% if estoque.produto.ean %}
+            <p><strong>EAN:</strong> {{ estoque.produto.ean }}</p>
+            {% endif %}
+            <p><strong>Estoque Atual:</strong> <span class="quantity-badge">{{ estoque.quantidade }}</span></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<style>
+.saving {
+    background-color: #e8f5e8 !important;
+    border-color: #28a745 !important;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.form-tip {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #007bff;
+}
+
+.form-tip small {
+    display: block;
+    line-height: 1.4;
+}
+</style>
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Inicializar Select2 para melhor experiência
+    $('#produto_id').select2({
+        placeholder: 'Selecione um produto',
+        allowClear: true,
+        width: '100%'
+    });
+    
+    // Validação do formulário
+    $('form').on('submit', function(e) {
+        var produto = $('#produto_id').val();
+        var quantidade = $('#quantidade').val();
+        var data_entrada = $('#data_entrada').val();
+        var conferente = $('#conferente').val();
+        
+        if (!produto) {
+            alert('Por favor, selecione um produto');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!quantidade || quantidade < 0) {
+            alert('Por favor, informe uma quantidade válida');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!data_entrada) {
+            alert('Por favor, informe a data de entrada');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!conferente.trim()) {
+            alert('Por favor, informe o nome do conferente');
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Permitir salvar com ENTER em qualquer campo
+    $('input, select').on('keypress', function(e) {
+        if (e.which === 13) { // Tecla ENTER
+            e.preventDefault();
+            $('form').submit();
+        }
+    });
+    
+    // Foco automático no primeiro campo editável
+    $('#quantidade').focus();
+});
+</script>
+{% endblock %}

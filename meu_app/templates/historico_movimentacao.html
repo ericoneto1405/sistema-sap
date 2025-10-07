@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Movimentação - {{ produto.nome }} - SAP{% endblock %}
+{% block page_title %}Histórico de Movimentação{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h2>Histórico de Movimentação</h2>
+        <div class="product-info-header">
+            <h3>{{ produto.nome }}</h3>
+            {% if produto.codigo_interno %}
+            <p class="product-code">Código: {{ produto.codigo_interno }}</p>
+            {% endif %}
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('estoques.listar_estoques') }}" class="btn btn-secondary">
+                <span class="icon">←</span>
+                Voltar ao Estoque
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="content-section">
+    {% if movimentacoes %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Status</th>
+                    <th>Quantidade</th>
+                    <th>Responsável</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mov in movimentacoes %}
+                    <tr class="movimentacao-row movimentacao-{{ mov.tipo_movimentacao.lower() }}">
+                        <td>{{ mov.data_movimentacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            {% if 'Contagem' in mov.motivo %}
+                                <span class="movimentacao-badge movimentacao-contagem">Contagem</span>
+                            {% elif 'Entrada por NF' in mov.motivo %}
+                                <span class="movimentacao-badge movimentacao-entrada-nf">Entrada por NF</span>
+                            {% else %}
+                                <span class="movimentacao-badge movimentacao-{{ mov.tipo_movimentacao.lower() }}">
+                                    {{ mov.tipo_movimentacao }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if mov.quantidade_movimentada > 0 %}
+                                <span class="quantidade-movimentada positiva">
+                                    +{{ mov.quantidade_movimentada }}
+                                </span>
+                            {% else %}
+                                <span class="quantidade-movimentada negativa">
+                                    {{ mov.quantidade_movimentada }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ mov.responsavel }}</td>
+                        <td>
+                            {% if mov.observacoes %}
+                            <span class="observacoes" title="{{ mov.observacoes }}">{{ mov.observacoes[:50] }}{% if mov.observacoes|length > 50 %}...{% endif %}</span>
+                            {% else %}
+                            <span class="no-observacoes">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Total alinhado à coluna Quantidade -->
+        <div class="totais-section">
+            <div class="totais-card">
+                <div class="total-simples">
+                    <span class="total-label">Total:</span>
+                    <span class="total-value geral" id="total-quantidade">
+                        +{{ total }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon">📊</span>
+        <p>Nenhuma movimentação encontrada para este produto</p>
+        <p class="empty-subtitle">O histórico de movimentações aparecerá aqui quando houver alterações no estoque</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.product-info-header {
+    margin: 10px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.product-info-header h3 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 1.2em;
+}
+
+.product-code {
+    margin: 0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.movimentacao-row {
+    transition: background-color 0.2s;
+}
+
+.movimentacao-row:hover {
+    background-color: #f8f9fa;
+}
+
+.movimentacao-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.movimentacao-entrada {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.movimentacao-saída {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.movimentacao-ajuste {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.movimentacao-contagem {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.movimentacao-entrada-nf {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.quantidade-movimentada {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.quantidade-movimentada.positiva {
+    color: #28a745;
+}
+
+.quantidade-movimentada.negativa {
+    color: #dc3545;
+}
+
+.quantidade-atual {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.observacoes {
+    color: #666;
+    font-style: italic;
+}
+
+.no-observacoes {
+    color: #999;
+    font-style: italic;
+}
+
+/* Estilos para os totais */
+.totais-section {
+    margin-top: 30px;
+}
+
+.totais-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    border-left: 4px solid #007bff;
+}
+
+.totais-card h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.total-simples {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 15px 20px;
+    background: #e3f2fd;
+    border-radius: 6px;
+    border: 1px solid #2196f3;
+    font-weight: bold;
+    gap: 15px;
+}
+
+.total-label {
+    color: #333;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.total-value {
+    font-weight: bold;
+    font-size: 1.3em;
+    padding: 6px 12px;
+    border-radius: 4px;
+}
+
+.total-value.geral {
+    background-color: #28a745;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 3em;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.empty-subtitle {
+    font-size: 0.9em;
+    color: #999;
+    margin-top: 10px;
+}
+</style>
+{% endblock %}

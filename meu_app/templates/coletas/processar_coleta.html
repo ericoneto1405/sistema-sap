@@ -1,0 +1,221 @@
+
+{% extends "base.html" %}
+
+{% block title %}Processar Coleta - Pedido {{ detalhes.pedido.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.btn-loading {
+    display: none !important;
+}
+
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Garantir que o carregamento seja visível */
+.btn-loading.show {
+    display: inline !important;
+}
+
+.btn-text.hide {
+    display: none !important;
+}
+</style>
+{% endblock %}
+
+{% block page_title %}📦 Processar Coleta - Pedido #{{ detalhes.pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-hand-holding"></i> Registrar Coleta
+                    </h3>
+                    <p class="text-muted mb-0">
+                        <strong>Cliente:</strong> {{ detalhes.cliente.nome }} | 
+                        <strong>Data do Pedido:</strong> {{ detalhes.pedido.data.strftime('%d/%m/%Y') }}
+                    </p>
+                </div>
+                
+                <div class="card-body">
+                    <form id="formColeta" method="POST">
+                        <!-- Informações do Cliente -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nome_retirada" class="form-label">
+                                        <i class="fas fa-user"></i> Nome da Pessoa que está Retirando *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="nome_retirada" 
+                                           name="nome_retirada" 
+                                           required
+                                           placeholder="Digite o nome completo">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="documento_retirada" class="form-label">
+                                        <i class="fas fa-id-card"></i> CPF da Pessoa que está Retirando *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="documento_retirada" 
+                                           name="documento_retirada" 
+                                           required
+                                           placeholder="Digite o CPF">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Informações do Conferente -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nome_conferente" class="form-label">
+                                        <i class="fas fa-user-check"></i> Nome do Conferente *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="nome_conferente" 
+                                           name="nome_conferente" 
+                                           required
+                                           placeholder="Digite o nome do conferente">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="cpf_conferente" class="form-label">
+                                        <i class="fas fa-id-card"></i> CPF do Conferente *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="cpf_conferente" 
+                                           name="cpf_conferente" 
+                                           required
+                                           placeholder="Digite o CPF do conferente">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Observações -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="observacoes" class="form-label">
+                                        <i class="fas fa-comment"></i> Observações (Opcional)
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="observacoes" 
+                                              name="observacoes" 
+                                              rows="3" 
+                                              placeholder="Observações adicionais sobre a coleta"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Itens do Pedido -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h4 class="mb-3">
+                                    <i class="fas fa-boxes"></i> Itens para Coleta
+                                </h4>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Produto</th>
+                                                <th>Quantidade Total</th>
+                                                <th>Já Coletado</th>
+                                                <th>Pendente</th>
+                                                <th>Estoque Disponível</th>
+                                                <th>Quantidade a Coletar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in detalhes.itens %}
+                                            {% if item.quantidade_pendente > 0 %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ item.produto.nome }}</strong>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ item.quantidade }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">{{ item.quantidade_coletada }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning">{{ item.quantidade_pendente }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge 
+                                                        {% if item.estoque_disponivel > 0 %}bg-info{% else %}bg-danger{% endif %}">
+                                                        {{ item.estoque_disponivel }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group">
+                                                        <input type="number" 
+                                                               class="form-control quantidade-input" 
+                                                               name="quantidade_{{ item.id }}"
+                                                               id="quantidade_{{ item.id }}"
+                                                               min="0" 
+                                                               max="{{ [item.quantidade_pendente, item.estoque_disponivel]|min }}"
+                                                               value="0">
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botões -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('coletas.index') }}" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left"></i> Voltar
+                                    </a>
+                                    
+                                    <button type="submit" class="btn btn-success" id="btnProcessar">
+                                        <span class="btn-text">
+                                            <i class="fas fa-check"></i> Processar Coleta
+                                        </span>
+                                        <span class="btn-loading" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Processando...
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript removido - formulário será enviado diretamente sem interceptação -->
+
+{% endblock %}

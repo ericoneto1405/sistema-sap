@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Apuração{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1>Editar Apuração</h1>
+        <p class="page-description">
+            {% if apuracao %}
+                Editando apuração de {{ apuracao.mes_nome }}/{{ apuracao.ano }}
+            {% else %}
+                Crie uma nova apuração mensal com verbas e cálculos
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="form-container">
+        <form method="POST" class="apuracao-form" id="apuracaoForm">
+            <!-- Período -->
+            <div class="form-section">
+                <h3>Período</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mes">Mês:</label>
+                        <select name="mes" id="mes" class="form-control" {% if apuracao %}disabled{% endif %} required>
+                            {% for i in range(1, 13) %}
+                                {% set mes_nome = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][i] %}
+                                <option value="{{ i }}" {% if apuracao and apuracao.mes == i %}selected{% endif %}>
+                                    {{ mes_nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ano">Ano:</label>
+                        <input type="number" 
+                               name="ano" 
+                               id="ano" 
+                               class="form-control" 
+                               value="{{ apuracao.ano if apuracao else '' }}"
+                               {% if apuracao %}readonly{% endif %}
+                               min="2020" 
+                               max="2100" 
+                               required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dados Financeiros Básicos -->
+            <div class="form-section">
+                <h3>Dados Financeiros</h3>
+                <p class="info-text">💡 Os valores são calculados automaticamente baseados nos pedidos pagos do período selecionado.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="receita">Receita:</label>
+                        <small class="help-text">Receita total do período</small>
+                        <input type="text" 
+                               name="receita" 
+                               id="receita" 
+                               class="form-control currency-input" 
+                               value="{{ dados.receita if dados else (apuracao.receita if apuracao else '') }}"
+                               step="0.01" 
+                               min="0"
+                               oninput="calcularResultados()">
+                    </div>
+                    <div class="form-group">
+                        <label for="cpv">CPV (Custo dos Produtos Vendidos):</label>
+                        <small class="help-text">Custo dos produtos vendidos no período</small>
+                        <input type="text" 
+                               name="cpv" 
+                               id="cpv" 
+                               class="form-control currency-input" 
+                               value="{{ dados.cpv if dados else (apuracao.cpv if apuracao else '') }}"
+                               step="0.01" 
+                               min="0"
+                               oninput="calcularResultados()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verbas e Outros Dados -->
+            <div class="form-section">
+                <h3>Verbas e Outros Dados</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="verbas">Verbas Totais:</label>
+                        <small class="help-text">Total de verbas do período</small>
+                        <input type="text" 
+                               name="verbas" 
+                               id="verbas" 
+                               class="form-control currency-input" 
+                               value="{{ dados.verbas if dados else (apuracao.verbas if apuracao else '') }}"
+                               step="0.01" 
+                               min="0"
+                               oninput="calcularResultados()">
+                    </div>
+                    <div class="form-group">
+                        <label for="margem_manobra">Margem de Manobra:</label>
+                        <small class="help-text">Margem de manobra do período</small>
+                        <input type="text" 
+                               name="margem_manobra" 
+                               id="margem_manobra" 
+                               class="form-control currency-input" 
+                               value="{{ dados.margem_manobra if dados else (apuracao.margem_manobra if apuracao else '') }}"
+                               step="0.01" 
+                               min="0"
+                               oninput="calcularResultados()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="percentual_margem">Percentual de Margem (%):</label>
+                        <small class="help-text">Percentual de margem do período</small>
+                        <input type="number" 
+                               name="percentual_margem" 
+                               id="percentual_margem" 
+                               class="form-control" 
+                               value="{{ dados.percentual_margem if dados else (apuracao.percentual_margem if apuracao else '') }}"
+                               step="0.1" 
+                               min="0"
+                               max="100"
+                               oninput="calcularResultados()">
+                    </div>
+                    <div class="form-group">
+                        <label for="total_pedidos">Total de Pedidos:</label>
+                        <small class="help-text">Total de pedidos no período</small>
+                        <input type="number" 
+                               name="total_pedidos" 
+                               id="total_pedidos" 
+                               class="form-control" 
+                               value="{{ dados.total_pedidos if dados else (apuracao.total_pedidos if apuracao else '') }}"
+                               min="0"
+                               oninput="calcularResultados()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pedidos_pagos">Pedidos Pagos:</label>
+                        <small class="help-text">Total de pedidos pagos no período</small>
+                        <input type="number" 
+                               name="pedidos_pagos" 
+                               id="pedidos_pagos" 
+                               class="form-control" 
+                               value="{{ dados.pedidos_pagos if dados else (apuracao.pedidos_pagos if apuracao else '') }}"
+                               min="0"
+                               oninput="calcularResultados()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo dos Cálculos -->
+            <div class="form-section">
+                <h3>Resumo dos Resultados</h3>
+                <div class="calculations-grid">
+                    <div class="calc-item">
+                        <span class="calc-label">Margem Bruta:</span>
+                        <span class="calc-value" id="margemBruta">R$ 0,00</span>
+                    </div>
+                    <div class="calc-item">
+                        <span class="calc-label">Total Verbas:</span>
+                        <span class="calc-value" id="totalVerbas">R$ 0,00</span>
+                    </div>
+                    <div class="calc-item">
+                        <span class="calc-label">Resultado Líquido:</span>
+                        <span class="calc-value" id="resultadoLiquido">R$ 0,00</span>
+                    </div>
+                    <div class="calc-item">
+                        <span class="calc-label">% Margem:</span>
+                        <span class="calc-value" id="percentualMargem">0,0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="form-actions">
+                <a href="{{ url_for('apuracao.listar_apuracao') }}" class="btn-secondary">Cancelar</a>
+                <button type="submit" class="btn-primary">
+                    {% if apuracao %}Atualizar{% else %}Criar{% endif %} Apuração
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-container {
+    background: var(--neo-background);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--neo-outset-shadow);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.info-text {
+    background: rgba(107, 70, 193, 0.1);
+    color: var(--color-primary);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    border-left: 4px solid var(--color-primary);
+    font-size: 0.9rem;
+}
+
+.help-text {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    display: block;
+    margin-bottom: 0.3rem;
+    font-style: italic;
+}
+
+.periodo-info {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.periodo-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: #28a745;
+    font-size: 1rem;
+}
+
+.periodo-info p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.readonly-field {
+    background-color: #f8f9fa !important;
+    color: var(--text-secondary) !important;
+    cursor: not-allowed !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+.readonly-field:focus {
+    box-shadow: none !important;
+    border-color: #dee2e6 !important;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.currency-input {
+    text-align: right;
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.calculations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.calc-item {
+    background: var(--neo-background);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--neo-inset-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.calc-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.calc-value {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 1rem;
+}
+
+.calc-value.positive {
+    color: var(--success-color);
+}
+
+.calc-value.negative {
+    color: var(--danger-color);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-light);
+}
+
+</style>
+
+<script>
+function calcularResultados() {
+    const receita = parseFloat(document.getElementById('receita').value) || 0;
+    const cpv = parseFloat(document.getElementById('cpv').value) || 0;
+    const verbas = parseFloat(document.getElementById('verbas').value) || 0;
+    const margemManobra = parseFloat(document.getElementById('margem_manobra').value) || 0;
+    const percentualMargem = parseFloat(document.getElementById('percentual_margem').value) || 0;
+
+    // Cálculos
+    const margemBruta = receita - cpv;
+    const resultadoLiquido = margemBruta + verbas;
+    const percentualCalculado = receita > 0 ? (margemBruta / receita) * 100 : 0;
+
+    // Atualizar display
+    document.getElementById('margemBruta').textContent = formatCurrency(margemBruta);
+    document.getElementById('totalVerbas').textContent = formatCurrency(verbas);
+    document.getElementById('resultadoLiquido').textContent = formatCurrency(resultadoLiquido);
+    document.getElementById('percentualMargem').textContent = percentualCalculado.toFixed(1) + '%';
+
+    // Aplicar classes de cor
+    const margemEl = document.getElementById('margemBruta');
+    const resultadoEl = document.getElementById('resultadoLiquido');
+    const percentualEl = document.getElementById('percentualMargem');
+
+    // Reset classes
+    [margemEl, resultadoEl, percentualEl].forEach(el => {
+        el.classList.remove('positive', 'negative');
+    });
+
+    // Aplicar cores baseadas nos valores
+    margemEl.classList.add(margemBruta >= 0 ? 'positive' : 'negative');
+    resultadoEl.classList.add(resultadoLiquido >= 0 ? 'positive' : 'negative');
+    percentualEl.classList.add(percentualCalculado >= 0 ? 'positive' : 'negative');
+}
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+}
+
+// Calcular resultados na carga da página
+document.addEventListener('DOMContentLoaded', function() {
+    calcularResultados();
+});
+</script>
+{% endblock %}

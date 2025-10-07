@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Adicionar ao Controle de Estoque - SAP{% endblock %}
+{% block page_title %}Adicionar ao Controle de Estoque{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h2>Adicionar ao Controle de Estoque</h2>
+        <div class="header-actions">
+            <a href="{{ url_for('estoques.listar_estoques') }}" class="btn btn-secondary">
+                <span class="icon">←</span>
+                Voltar
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="form-container">
+        <form method="POST" class="form-card">
+            <div class="form-group">
+                <label for="produto_id">Descrição (Produto)</label>
+                <select name="produto_id" id="produto_id" class="form-control" required>
+                    <option value="">Selecione um produto</option>
+                    {% for produto in produtos %}
+                    <option value="{{ produto.id }}">
+                        {{ produto.nome }}
+                        {% if produto.codigo_interno %} - {{ produto.codigo_interno }}{% endif %}
+                        {% if produto.ean %} (EAN: {{ produto.ean }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="quantidade">Quantidade a Adicionar</label>
+                <input type="number" name="quantidade" id="quantidade" class="form-control" 
+                       min="0" step="1" required placeholder="Digite a quantidade a adicionar">
+            </div>
+
+            <div class="form-group">
+                <label for="data_entrada">Data de Entrada</label>
+                <input type="datetime-local" name="data_entrada" id="data_entrada" class="form-control" 
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label for="conferente">Conferente</label>
+                <input type="text" name="conferente" id="conferente" class="form-control" 
+                       required placeholder="Nome do conferente">
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select name="status" id="status" class="form-control" required>
+                    <option value="">Selecione o status</option>
+                    <option value="Contagem">Contagem</option>
+                    <option value="Entrada por NF">Entrada por NF</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="observacoes">Observações</label>
+                <textarea name="observacoes" id="observacoes" class="form-control" 
+                          rows="3" placeholder="Digite observações sobre esta movimentação (opcional)"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span class="icon">➕</span>
+                    Adicionar ao Estoque
+                </button>
+                <a href="{{ url_for('estoques.listar_estoques') }}" class="btn btn-secondary">
+                    Cancelar
+                </a>
+            </div>
+            
+            <div class="form-tip">
+                <small class="text-muted">
+                    💡 <strong>Dica:</strong> Pressione ENTER em qualquer campo para salvar rapidamente!
+                </small>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Informações adicionais -->
+<div class="info-section">
+    <div class="info-card">
+        <h3>📋 Informações sobre o Controle de Estoque</h3>
+        <ul>
+            <li><strong>Descrição:</strong> Selecione o produto para atualizar seu controle de estoque</li>
+            <li><strong>Estoque:</strong> Quantidade atual disponível em estoque (será atualizada)</li>
+            <li><strong>Data de Entrada:</strong> Data e hora da entrada do produto (será atualizada)</li>
+            <li><strong>Conferente:</strong> Nome da pessoa responsável pela conferência (será atualizado)</li>
+            <li><strong>Status:</strong> Tipo de operação realizada no estoque (será atualizado)</li>
+        </ul>
+        <div class="alert alert-info">
+            <strong>💡 Importante:</strong> A quantidade informada será ADICIONADA ao estoque atual do produto. 
+            Se o produto não possui controle de estoque, será criado um novo controle.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<style>
+.saving {
+    background-color: #e8f5e8 !important;
+    border-color: #28a745 !important;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.form-tip {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #007bff;
+}
+
+.form-tip small {
+    display: block;
+    line-height: 1.4;
+}
+
+.alert {
+    padding: 12px 16px;
+    margin: 15px 0;
+    border-radius: 6px;
+    border-left: 4px solid;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #17a2b8;
+    color: #0c5460;
+}
+
+.alert strong {
+    color: #0c5460;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.alert-warning strong {
+    color: #856404;
+}
+</style>
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Inicializar Select2 para melhor experiência
+    $('#produto_id').select2({
+        placeholder: 'Selecione um produto',
+        allowClear: true,
+        width: '100%'
+    });
+    
+    // Validação do formulário
+    $('form').on('submit', function(e) {
+        var produto = $('#produto_id').val();
+        var quantidade = $('#quantidade').val();
+        var data_entrada = $('#data_entrada').val();
+        var conferente = $('#conferente').val();
+        var status = $('#status').val();
+        
+        if (!produto) {
+            alert('Por favor, selecione um produto');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!quantidade || quantidade < 0) {
+            alert('Por favor, informe uma quantidade válida');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!data_entrada) {
+            alert('Por favor, informe a data de entrada');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!conferente.trim()) {
+            alert('Por favor, informe o nome do conferente');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!status) {
+            alert('Por favor, selecione o status');
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Auto-completar conferente com o nome do usuário logado
+    $('#conferente').val('{{ session.usuario_nome }}');
+    
+    // Definir data atual como padrão
+    var now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    $('#data_entrada').val(now.toISOString().slice(0,16));
+    
+    // Verificar estoque atual quando produto for selecionado
+    $('#produto_id').on('change', function() {
+        var produtoId = $(this).val();
+        if (produtoId) {
+            // Fazer requisição AJAX para buscar estoque atual
+            $.get('/estoques/estoque_atual/' + produtoId, function(data) {
+                if (data.estoque) {
+                    $('#quantidade').val(data.estoque.quantidade);
+                    $('#conferente').val(data.estoque.conferente);
+                    $('#status').val(data.estoque.status);
+                    
+                    // Mostrar informação de estoque atual
+                    if (!$('#estoque-atual-info').length) {
+                        $('#produto_id').after('<div id="estoque-atual-info" class="alert alert-warning"><strong>📦 Estoque Atual:</strong> ' + data.estoque.quantidade + ' unidades (Conferente: ' + data.estoque.conferente + ', Status: ' + data.estoque.status + ')</div>');
+                    } else {
+                        $('#estoque-atual-info').html('<strong>📦 Estoque Atual:</strong> ' + data.estoque.quantidade + ' unidades (Conferente: ' + data.estoque.conferente + ', Status: ' + data.estoque.status + ')');
+                    }
+                } else {
+                    // Produto sem estoque
+                    $('#quantidade').val('');
+                    if ($('#estoque-atual-info').length) {
+                        $('#estoque-atual-info').remove();
+                    }
+                }
+            }).fail(function() {
+                console.log('Erro ao buscar estoque atual');
+            });
+        }
+    });
+    
+    // Permitir salvar com ENTER em qualquer campo
+    $('input, select').on('keypress', function(e) {
+        if (e.which === 13) { // Tecla ENTER
+            e.preventDefault();
+            $('form').submit();
+        }
+    });
+    
+    // Navegação com TAB melhorada
+    $('input, select').on('keydown', function(e) {
+        if (e.which === 9) { // Tecla TAB
+            var inputs = $('input, select').filter(':visible');
+            var idx = inputs.index(this);
+            if (idx == inputs.length - 1 && e.shiftKey == false) {
+                // Último campo, pressionar ENTER para salvar
+                setTimeout(function() {
+                    $('form').submit();
+                }, 100);
+            }
+        }
+    });
+    
+    // Foco automático no primeiro campo
+    $('#produto_id').focus();
+    
+    // Feedback visual ao pressionar ENTER
+    $('input, select').on('keydown', function(e) {
+        if (e.which === 13) {
+            $(this).addClass('saving');
+            setTimeout(function() {
+                $('.saving').removeClass('saving');
+            }, 200);
+        }
+    });
+});
+</script>
+{% endblock %}

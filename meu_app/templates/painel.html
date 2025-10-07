@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Alertas de Coleta Melhorados -->
+{% if alertas_coleta %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0 d-flex align-items-center gap-2">
+            <div class="alert-icon">⚠️</div>
+            <span>Alertas de Coleta ({{ alertas_coleta|length }})</span>
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        {% for alerta in alertas_coleta %}
+        <div class="alert-card">
+            <div class="alert-header">
+                <div class="alert-icon">{{ alerta.dias }}</div>
+                <div>
+                    <h6 class="alert-title">Pedido #{{ alerta.pedido_id }}</h6>
+                    <p class="alert-meta mb-0">{{ alerta.cliente }}</p>
+                </div>
+            </div>
+            <div class="alert-content">
+                <div class="alert-info">
+                    <div class="alert-value">{{ alerta.valor | currency_brl }}</div>
+                    <div class="alert-meta">Pendente há {{ alerta.dias }} dias</div>
+                </div>
+                <div class="alert-action">
+                    <a href="{{ url_for('logistica.coletar', pedido_id=alerta.pedido_id) }}" 
+                       class="btn btn-success btn-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px;">
+                            <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4z"/>
+                        </svg>
+                        Coletar
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <form method="GET" class="filter-form">
+        <div class="d-flex gap-3 align-items-end">
+            <div class="form-group">
+                <label for="mes">Mês</label>
+                <select name="mes" id="mes" class="form-control">
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Janeiro</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Fevereiro</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Março</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Maio</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junho</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julho</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Setembro</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Outubro</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Novembro</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Dezembro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="ano">Ano</label>
+                <select name="ano" id="ano" class="form-control">
+                    {% for a in range(2020, 2101) %}
+                        <option value="{{ a }}" {% if ano == a %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>&nbsp;</label> <!-- Label vazio para alinhar o botão -->
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+    <!-- Faturamento -->
+    <div class="kpi-card kpi-faturamento" onclick="showDrillDown('faturamento')">
+        <div class="kpi-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+            </svg>
+        </div>
+        <div class="kpi-content">
+            <h3>Faturamento</h3>
+            <div class="kpi-value">{{ faturamento_total | currency_brl }}</div>
+            <div class="kpi-subtitle">
+                {% if mes %}
+                    {{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes] }} / {{ ano }}
+                {% endif %}
+            </div>
+        </div>
+        <div class="kpi-action">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Verbas Totais -->
+    <div class="kpi-card kpi-verbas-totais" onclick="showDrillDown('verbas')">
+        <div class="kpi-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+            </svg>
+        </div>
+        <div class="kpi-content">
+            <h3>Verbas Totais</h3>
+            <div class="kpi-value">{{ total_verbas | currency_brl }}</div>
+            <div class="kpi-subtitle">SCANN + Plano + AMBEV + Outras</div>
+        </div>
+        <div class="kpi-action">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- CPV Total -->
+    <div class="kpi-card kpi-cpv" onclick="showDrillDown('cpv')">
+        <div class="kpi-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+        </div>
+        <div class="kpi-content">
+            <h3>CPV Total</h3>
+            <div class="kpi-value">{{ cpv_total | currency_brl }}</div>
+            <div class="kpi-subtitle">Custo dos Produtos Vendidos</div>
+        </div>
+        <div class="kpi-action">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Margem de Manobra -->
+    <div class="kpi-card kpi-margem" onclick="showDrillDown('margem')">
+        <div class="kpi-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+            </svg>
+        </div>
+        <div class="kpi-content">
+            <h3>Margem de Manobra</h3>
+            <div class="kpi-value">{{ margem_manobra | currency_brl }}</div>
+            <div class="kpi-subtitle">
+                {{ "{:.1f}%".format(percentual_margem) }} de margem
+            </div>
+        </div>
+        <div class="kpi-action">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico de Evolução Diária -->
+<div class="card mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>📈 Evolução do Mês - {{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes] }} / {{ ano }}</h3>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="evolucaoChart" width="400" height="200"></canvas>
+    </div>
+    
+    <div class="chart-legend mt-3">
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #28a745;"></div>
+            <span>Receita + Verbas</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #dc3545;"></div>
+            <span>CPV Total</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #007bff;"></div>
+            <span>Margem</span>
+        </div>
+    </div>
+</div>
+
+<!-- Termômetro Financeiro Simplificado -->
+<div class="thermometer-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>📊 Saúde Financeira do Mês</h3>
+        <span class="badge badge-secondary">{{ ["", "jan", "fev", "mar", "abr", "mai", "jun", 
+            "jul", "ago", "set", "out", "nov", "dez"][mes] }} / {{ ano }}</span>
+    </div>
+    
+    <div class="thermometer-simple">
+        <div class="thermometer-indicator" id="thermometer-indicator"></div>
+    </div>
+    
+    <div class="thermometer-labels">
+        <span>Crítico</span>
+        <span>Alerta</span>
+        <span>Neutro</span>
+        <span>Bom</span>
+        <span>Excelente</span>
+    </div>
+    
+    <div class="text-center mt-3">
+        <div class="alert-value">{{ margem_manobra | currency_brl }}</div>
+        <div class="alert-meta">Margem de Manobra Atual</div>
+    </div>
+</div>
+
+<!-- Scripts do Dashboard -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+
+<!-- Dados para o JavaScript -->
+<script>
+    // Dados do dashboard para o JavaScript
+    window.dadosEvolucao = {{ dados_evolucao | tojson | safe }};
+    window.margemManobra = {{ margem_manobra }};
+</script>
+
+
+
+
+{% endblock %}
