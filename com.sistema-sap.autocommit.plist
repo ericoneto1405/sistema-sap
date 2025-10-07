@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sistema-sap.autocommit</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/ericobrandao/Downloads/SAP/venv/bin/python3</string>
+        <string>/Users/ericobrandao/Downloads/SAP/auto_git_commit.py</string>
+    </array>
+    
+    <key>WorkingDirectory</key>
+    <string>/Users/ericobrandao/Downloads/SAP</string>
+    
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <key>KeepAlive</key>
+    <true/>
+    
+    <key>StandardOutPath</key>
+    <string>/Users/ericobrandao/Downloads/SAP/.git-auto-commit.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>/Users/ericobrandao/Downloads/SAP/.git-auto-commit.log</string>
+    
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+    </dict>
+</dict>
+</plist>
