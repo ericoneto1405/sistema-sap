@@ -11,3 +11,11 @@ python-magic
 # OCR Dependencies - APENAS Google Vision
 google-cloud-vision
 pdf2image
+
+# Flask App Factory Extensions (adicionado em outubro/2025)
+Flask-WTF>=1.2.1
+Flask-Caching>=2.1.0
+Flask-Limiter>=3.5.0
+Flask-Talisman>=1.1.0
+redis>=5.0.0
+gunicorn>=21.2.0

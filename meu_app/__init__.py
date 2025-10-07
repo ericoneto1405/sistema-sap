@@ -1,40 +1,68 @@
-from flask import Flask, jsonify, request
-from flask_sqlalchemy import SQLAlchemy
-import os
+"""
+Aplicação Flask - Sistema SAP
+==============================
+
+App Factory pattern com suporte a múltiplos ambientes e extensões.
+
+Autor: Sistema SAP
+Data: Outubro 2025
+"""
+
 import logging
-from logging.handlers import RotatingFileHandler
+import os
 import traceback
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
+
 from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+from flask_caching import Cache
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_sqlalchemy import SQLAlchemy
+from flask_talisman import Talisman
+from flask_wtf.csrf import CSRFProtect
 
-# Inicializar extensões
+# Carregar variáveis de ambiente
+load_dotenv()
+
+# Inicializar extensões (sem app ainda)
 db = SQLAlchemy()
+csrf = CSRFProtect()
+cache = Cache()
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+talisman = None  # Será inicializado condicionalmente
 
-def create_app():
+
+def create_app(config_class=None):
     """
     Função fábrica para criar a aplicação Flask
-    """
-    # Carregar variáveis de ambiente do arquivo .env
-    load_dotenv()
     
+    Args:
+        config_class: Classe de configuração a ser usada.
+                     Se None, usa FLASK_ENV para determinar.
+    
+    Returns:
+        Flask: Instância configurada da aplicação
+    """
     app = Flask(__name__)
     
-    # Configuração do banco de dados
-    basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "instance", "sistema.db")}'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Carregar configuração
+    if config_class is None:
+        from config import get_config
+        config_class = get_config()
     
-    # Configuração de segurança - SECRET_KEY agora vem de variável de ambiente
-    secret_key = os.environ.get('SECRET_KEY')
-    # if not secret_key:
-    secret_key = "gerpedplus_default_secret_key_2024_secure"
-    app.config['SECRET_KEY'] = secret_key
-    
-    # Configurar logging estruturado
-    setup_logging(app, basedir)
+    app.config.from_object(config_class)
     
     # Inicializar extensões com a aplicação
-    db.init_app(app)
+    initialize_extensions(app)
+    
+    # Configurar logging
+    setup_logging(app)
     
     # Registrar error handlers
     register_error_handlers(app)
@@ -42,88 +70,83 @@ def create_app():
     # Registrar filtros personalizados
     register_custom_filters(app)
     
-    # Importar e registrar as rotas do app.py original
-    from . import routes
-    app.register_blueprint(routes.bp)
+    # Registrar blueprints
+    register_blueprints(app)
     
-    # Registrar blueprint de produtos
-    from .produtos import produtos_bp
-    app.register_blueprint(produtos_bp)
+    # Warm-up do OCR (opcional)
+    warmup_ocr(app)
     
-    # Registrar blueprint de clientes
-    from .clientes import clientes_bp
-    app.register_blueprint(clientes_bp)
-    
-    # Registrar blueprint de pedidos
-    from .pedidos import pedidos_bp
-    app.register_blueprint(pedidos_bp)
-    
-    # Registrar blueprint de usuários
-    from .usuarios import usuarios_bp
-    app.register_blueprint(usuarios_bp)
-    
-    # Registrar blueprint de estoques
-    from .estoques import estoques_bp
-    app.register_blueprint(estoques_bp)
-    
-    # Registrar blueprint de financeiro
-    from .financeiro import financeiro_bp
-    app.register_blueprint(financeiro_bp)
-    
-    # Registrar blueprint de logística (TEMPORARIAMENTE COMENTADO PARA RECONSTRUÇÃO)
-    # from .logistica import logistica_bp
-    # app.register_blueprint(logistica_bp)
-    
-    # Registrar blueprint de coletas (NOVO MÓDULO)
-    from .coletas import coletas_bp
-    app.register_blueprint(coletas_bp)
-    
-    # Registrar blueprint de apuração
-    from .apuracao import apuracao_bp
-    app.register_blueprint(apuracao_bp)
-    
-    # Registrar blueprint de log de atividades
-    from .log_atividades import log_atividades_bp
-    app.register_blueprint(log_atividades_bp)
-    # Registrar blueprint de vendedor
-    from .vendedor import vendedor_bp
-    app.register_blueprint(vendedor_bp)
-    
-    # Warm-up opcional do OCR para reduzir latência da 1ª chamada
-    try:
-        from .financeiro.config import FinanceiroConfig
-        if getattr(FinanceiroConfig, 'OCR_WARMUP', False):
-            from .financeiro.ocr_service import OcrService
-            OcrService._get_reader()
-    except Exception:
-        pass
+    # Log de inicialização
+    app.logger.info('=' * 60)
+    app.logger.info(f'Aplicação SAP iniciada')
+    app.logger.info(f'Ambiente: {app.config.get("ENV", "development")}')
+    app.logger.info(f'Debug: {app.debug}')
+    app.logger.info(f'Database: {app.config["SQLALCHEMY_DATABASE_URI"][:50]}...')
+    app.logger.info('=' * 60)
     
     return app
 
-def setup_logging(app, basedir):
-    """
-    Configura o sistema de logging estruturado
-    """
-    # Criar pasta de logs se não existir
-    log_dir = os.path.join(basedir, 'instance', 'logs')
-    if not os.path.exists(log_dir):
+
+def initialize_extensions(app):
+    """Inicializa todas as extensões Flask"""
+    
+    # Database
+    db.init_app(app)
+    
+    # CSRF Protection
+    csrf.init_app(app)
+    
+    # Cache
+    cache.init_app(app)
+    
+    # Rate Limiting
+    limiter.init_app(app)
+    
+    # Security Headers (apenas em produção)
+    if app.config.get('SECURITY_HEADERS_ENABLED'):
+        global talisman
+        csp = app.config.get('CSP_DIRECTIVES', {})
+        talisman = Talisman(
+            app,
+            force_https=True,
+            strict_transport_security=True,
+            content_security_policy=csp,
+            content_security_policy_nonce_in=['script-src'],
+            feature_policy={
+                'geolocation': "'none'",
+                'camera': "'none'",
+                'microphone': "'none'",
+            }
+        )
+        app.logger.info('Talisman habilitado - Headers de segurança ativos')
+
+
+def setup_logging(app):
+    """Configura o sistema de logging estruturado"""
+    
+    # Criar pasta de logs
+    log_dir = app.config.get('LOG_DIR')
+    if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
-    log_file = os.path.join(log_dir, 'app.log')
+    log_file = os.path.join(log_dir, 'app.log') if log_dir else 'app.log'
     
-    # Configurar formato do log
+    # Configurar formato
     formatter = logging.Formatter(
         '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
     )
     
-    # Handler para arquivo com rotação (máximo 10MB por arquivo, manter 5 arquivos)
+    # Handler para arquivo com rotação
     file_handler = RotatingFileHandler(
-        log_file, 
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
+        log_file,
+        maxBytes=app.config.get('LOG_MAX_BYTES', 10 * 1024 * 1024),
+        backupCount=app.config.get('LOG_BACKUP_COUNT', 5)
     )
     file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.INFO)
+    
+    # Definir nível de log
+    log_level = getattr(logging, app.config.get('LOG_LEVEL', 'INFO').upper())
+    file_handler.setLevel(log_level)
     
     # Handler para console (apenas em desenvolvimento)
     if app.debug:
@@ -133,45 +156,31 @@ def setup_logging(app, basedir):
         app.logger.addHandler(console_handler)
     
     app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.INFO)
-    
-    # Log de inicialização com informações do sistema
-    app.logger.info('Aplicação iniciada')
-    app.logger.info(f'Modo debug: {app.debug}')
-    app.logger.info(f'Banco de dados: {app.config["SQLALCHEMY_DATABASE_URI"]}')
-    app.logger.info(f'Diretório de logs: {log_dir}')
+    app.logger.setLevel(log_level)
+
 
 def register_error_handlers(app):
-    """
-    Registra os manipuladores de erro globais
-    """
+    """Registra manipuladores de erro globais"""
     
     @app.errorhandler(Exception)
     def handle_exception(e):
-        """
-        Manipulador global de exceções não tratadas
-        Retorna sempre JSON para evitar erros de sintaxe no frontend
-        """
-        # Log detalhado do erro
+        """Manipulador global de exceções"""
+        # Log detalhado
         app.logger.error(f'Erro não tratado: {str(e)}')
         app.logger.error(f'Traceback: {traceback.format_exc()}')
         app.logger.error(f'URL: {request.url}')
         app.logger.error(f'Método: {request.method}')
         app.logger.error(f'IP: {request.remote_addr}')
         
-        # Se for uma requisição AJAX ou API, retornar JSON
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-           request.path.startswith('/api/') or \
-           request.headers.get('Accept') == 'application/json':
-            
+        # Retornar resposta JSON
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({
                 'error': True,
-                'message': 'Erro interno do servidor',
+                'message': 'Erro interno do servidor' if not app.debug else str(e),
                 'type': type(e).__name__,
                 'timestamp': datetime.now().isoformat()
             }), 500
         
-        # Para requisições normais, retornar página de erro amigável
         return jsonify({
             'error': True,
             'message': 'Ocorreu um erro inesperado. Por favor, tente novamente.',
@@ -181,33 +190,19 @@ def register_error_handlers(app):
     
     @app.errorhandler(404)
     def not_found_error(error):
-        """
-        Manipulador para erros 404
-        """
+        """Manipulador para erros 404"""
         app.logger.warning(f'Página não encontrada: {request.url}')
-        
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-           request.path.startswith('/api/'):
-            
-            return jsonify({
-                'error': True,
-                'message': 'Recurso não encontrado',
-                'type': 'NotFound',
-                'timestamp': datetime.now().isoformat()
-            }), 404
         
         return jsonify({
             'error': True,
-            'message': 'Página não encontrada',
+            'message': 'Recurso não encontrado',
             'type': 'NotFound',
             'timestamp': datetime.now().isoformat()
         }), 404
     
     @app.errorhandler(403)
     def forbidden_error(error):
-        """
-        Manipulador para erros 403 (acesso negado)
-        """
+        """Manipulador para erros 403"""
         app.logger.warning(f'Acesso negado: {request.url} - IP: {request.remote_addr}')
         
         return jsonify({
@@ -216,28 +211,34 @@ def register_error_handlers(app):
             'type': 'Forbidden',
             'timestamp': datetime.now().isoformat()
         }), 403
+    
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        """Manipulador para rate limit excedido"""
+        app.logger.warning(f'Rate limit excedido: {request.url} - IP: {request.remote_addr}')
+        
+        return jsonify({
+            'error': True,
+            'message': 'Muitas requisições. Tente novamente mais tarde.',
+            'type': 'RateLimitExceeded',
+            'timestamp': datetime.now().isoformat()
+        }), 429
+
 
 def register_custom_filters(app):
-    """
-    Registra filtros personalizados para os templates
-    """
+    """Registra filtros personalizados para os templates"""
+    
     @app.template_filter('currency_brl')
     def currency_brl_filter(value):
-        """
-        Filtro para formatação de moeda brasileira
-        Converte valor numérico para formato R$ 10.000,00
-        """
+        """Filtro para formatação de moeda brasileira"""
         if value is None or value == '':
             return 'R$ 0,00'
         
         try:
-            # Converte para float se for string
             if isinstance(value, str):
                 value = float(value.replace(',', '.'))
             
-            # Formata usando locale brasileiro
             formatted = "{:,.2f}".format(float(value))
-            # Troca separadores para padrão brasileiro
             formatted = formatted.replace(',', 'X').replace('.', ',').replace('X', '.')
             
             return f'R$ {formatted}'
@@ -246,22 +247,62 @@ def register_custom_filters(app):
     
     @app.template_filter('number_brl')
     def number_brl_filter(value):
-        """
-        Filtro para formatação de números no padrão brasileiro (sem símbolo de moeda)
-        """
+        """Filtro para formatação de números no padrão brasileiro"""
         if value is None or value == '':
             return '0,00'
         
         try:
-            # Converte para float se for string
             if isinstance(value, str):
                 value = float(value.replace(',', '.'))
             
-            # Formata usando locale brasileiro
             formatted = "{:,.2f}".format(float(value))
-            # Troca separadores para padrão brasileiro
             formatted = formatted.replace(',', 'X').replace('.', ',').replace('X', '.')
             
             return formatted
         except (ValueError, TypeError):
             return '0,00'
+
+
+def register_blueprints(app):
+    """Registra todos os blueprints da aplicação"""
+    
+    # Blueprint principal
+    from . import routes
+    app.register_blueprint(routes.bp)
+    
+    # Blueprints de domínio
+    from .produtos import produtos_bp
+    from .clientes import clientes_bp
+    from .pedidos import pedidos_bp
+    from .usuarios import usuarios_bp
+    from .estoques import estoques_bp
+    from .financeiro import financeiro_bp
+    from .coletas import coletas_bp
+    from .apuracao import apuracao_bp
+    from .log_atividades import log_atividades_bp
+    from .vendedor import vendedor_bp
+    
+    app.register_blueprint(produtos_bp)
+    app.register_blueprint(clientes_bp)
+    app.register_blueprint(pedidos_bp)
+    app.register_blueprint(usuarios_bp)
+    app.register_blueprint(estoques_bp)
+    app.register_blueprint(financeiro_bp)
+    app.register_blueprint(coletas_bp)
+    app.register_blueprint(apuracao_bp)
+    app.register_blueprint(log_atividades_bp)
+    app.register_blueprint(vendedor_bp)
+    
+    app.logger.info(f'Blueprints registrados: {len(app.blueprints)}')
+
+
+def warmup_ocr(app):
+    """Warm-up opcional do OCR para reduzir latência"""
+    try:
+        from .financeiro.config import FinanceiroConfig
+        if getattr(FinanceiroConfig, 'OCR_WARMUP', False):
+            from .financeiro.ocr_service import OcrService
+            OcrService._get_reader()
+            app.logger.info('OCR warm-up concluído')
+    except Exception as e:
+        app.logger.warning(f'OCR warm-up falhou: {e}')
