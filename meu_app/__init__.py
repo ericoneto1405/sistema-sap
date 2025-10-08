@@ -54,8 +54,8 @@ def create_app(config_class=None):
     # Inicializar extensões
     initialize_extensions(app)
     
-    # Configurar logging
-    setup_logging(app)
+    # FASE 6: Configurar observabilidade (logging estruturado, métricas, middleware)
+    setup_observability(app)
     
     # Registrar error handlers
     register_error_handlers(app)
@@ -120,42 +120,25 @@ def initialize_extensions(app):
     setup_security(app)
 
 
-def setup_logging(app):
-    """Configura o sistema de logging estruturado"""
+def setup_observability(app):
+    """
+    Configura o sistema completo de observabilidade (FASE 6)
     
-    # Criar pasta de logs
-    log_dir = app.config.get('LOG_DIR')
-    if log_dir and not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    Componentes:
+    - Logging estruturado JSON com request_id
+    - Métricas Prometheus
+    - Middleware de rastreamento de requests
+    """
+    from .obs import setup_structured_logging, init_metrics, setup_request_tracking
     
-    log_file = os.path.join(log_dir, 'app.log') if log_dir else 'app.log'
+    # 1. Logging estruturado JSON
+    setup_structured_logging(app)
     
-    # Configurar formato
-    formatter = logging.Formatter(
-        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-    )
+    # 2. Métricas Prometheus
+    init_metrics(app)
     
-    # Handler para arquivo com rotação
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=app.config.get('LOG_MAX_BYTES', 10 * 1024 * 1024),
-        backupCount=app.config.get('LOG_BACKUP_COUNT', 5)
-    )
-    file_handler.setFormatter(formatter)
-    
-    # Definir nível de log
-    log_level = getattr(logging, app.config.get('LOG_LEVEL', 'INFO').upper())
-    file_handler.setLevel(log_level)
-    
-    # Handler para console (apenas em desenvolvimento)
-    if app.debug:
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        console_handler.setLevel(logging.DEBUG)
-        app.logger.addHandler(console_handler)
-    
-    app.logger.addHandler(file_handler)
-    app.logger.setLevel(log_level)
+    # 3. Middleware de rastreamento
+    setup_request_tracking(app)
 
 
 def register_error_handlers(app):

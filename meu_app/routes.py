@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session, current_app, send_from_directory
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session, current_app, send_from_directory, Response
 from . import db
 from .models import Cliente, Produto, Pedido, ItemPedido, Pagamento, Coleta, Usuario, Apuracao
 import os
@@ -8,6 +8,7 @@ from functools import wraps
 import shutil
 from .decorators import login_obrigatorio, permissao_necessaria, admin_necessario
 from .security import limiter
+from .obs.metrics import export_metrics
 
 # Criar blueprint
 bp = Blueprint('main', __name__)
@@ -378,3 +379,25 @@ def teste_erro():
     """
     current_app.logger.info("Teste de erro solicitado")
     raise Exception("Este é um erro de teste para verificar o error handler global")
+
+
+@bp.route('/metrics')
+def metrics():
+    """
+    Endpoint de métricas Prometheus
+    
+    Exporta métricas da aplicação no formato Prometheus para monitoramento.
+    
+    Métricas disponíveis:
+    - http_requests_total: Total de requisições HTTP
+    - http_request_duration_seconds: Duração das requisições
+    - http_requests_in_progress: Requisições em andamento
+    - business_operations_total: Operações de negócio
+    - database_queries_total: Queries de banco
+    - cache_operations_total: Operações de cache
+    
+    Returns:
+        Métricas formatadas para Prometheus
+    """
+    current_app.logger.debug("Métricas Prometheus solicitadas")
+    return Response(export_metrics(), mimetype='text/plain; charset=utf-8')
