@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}404 - Página Não Encontrada{% endblock %}
+
+{% block page_title %}Página Não Encontrada{% endblock %}
+
+{% block content %}
+<div class="error-page" style="text-align: center; padding: 60px 20px; max-width: 600px; margin: 0 auto;">
+    <div style="font-size: 120px; font-weight: bold; color: #e74c3c; margin-bottom: 20px;">
+        404
+    </div>
+    
+    <h1 style="font-size: 32px; color: #2c3e50; margin-bottom: 20px;">
+        Página Não Encontrada
+    </h1>
+    
+    <p style="font-size: 18px; color: #7f8c8d; margin-bottom: 40px;">
+        Desculpe, a página que você está procurando não existe ou foi movida.
+    </p>
+    
+    <div style="margin-bottom: 40px;">
+        <svg width="200" height="200" viewBox="0 0 200 200" style="opacity: 0.3;">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#e74c3c" stroke-width="4"/>
+            <line x1="70" y1="70" x2="130" y2="130" stroke="#e74c3c" stroke-width="4"/>
+            <line x1="130" y1="70" x2="70" y2="130" stroke="#e74c3c" stroke-width="4"/>
+        </svg>
+    </div>
+    
+    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('main.painel') }}" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px;">
+            🏠 Voltar para o Painel
+        </a>
+        
+        <a href="javascript:history.back()" class="btn btn-secondary" style="padding: 12px 30px; font-size: 16px;">
+            ⬅️ Voltar
+        </a>
+    </div>
+    
+    <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <p style="font-size: 14px; color: #95a5a6; margin: 0;">
+            <strong>URL solicitada:</strong><br>
+            <code style="background: white; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 8px;">
+                {{ request.url }}
+            </code>
+        </p>
+    </div>
+</div>
+
+<style>
+.error-page code {
+    word-break: break-all;
+    font-size: 12px;
+    color: #e74c3c;
+}
+
+.error-page .btn {
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.error-page .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

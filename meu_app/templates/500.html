@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}500 - Erro Interno{% endblock %}
+
+{% block page_title %}Erro Interno do Servidor{% endblock %}
+
+{% block content %}
+<div class="error-page" style="text-align: center; padding: 60px 20px; max-width: 700px; margin: 0 auto;">
+    <div style="font-size: 120px; font-weight: bold; color: #e67e22; margin-bottom: 20px;">
+        500
+    </div>
+    
+    <h1 style="font-size: 32px; color: #2c3e50; margin-bottom: 20px;">
+        Erro Interno do Servidor
+    </h1>
+    
+    <p style="font-size: 18px; color: #7f8c8d; margin-bottom: 40px;">
+        Desculpe, algo deu errado no servidor. Nossa equipe foi notificada e está trabalhando para resolver o problema.
+    </p>
+    
+    <div style="margin-bottom: 40px;">
+        <svg width="200" height="200" viewBox="0 0 200 200" style="opacity: 0.3;">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#e67e22" stroke-width="4"/>
+            <text x="100" y="120" text-anchor="middle" fill="#e67e22" font-size="60" font-weight="bold">!</text>
+        </svg>
+    </div>
+    
+    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('main.painel') }}" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px;">
+            🏠 Voltar para o Painel
+        </a>
+        
+        <a href="javascript:location.reload()" class="btn btn-secondary" style="padding: 12px 30px; font-size: 16px;">
+            🔄 Tentar Novamente
+        </a>
+    </div>
+    
+    {% if error %}
+    <div style="margin-top: 40px; padding: 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; text-align: left;">
+        <p style="font-size: 14px; color: #856404; margin: 0; margin-bottom: 10px;">
+            <strong>⚠️ Modo Debug - Detalhes do Erro:</strong>
+        </p>
+        <pre style="background: white; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px; color: #d9534f; margin: 0;">{{ error }}</pre>
+    </div>
+    {% else %}
+    <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <p style="font-size: 14px; color: #95a5a6; margin: 0;">
+            <strong>💡 O que você pode fazer:</strong>
+        </p>
+        <ul style="text-align: left; margin-top: 15px; color: #7f8c8d;">
+            <li>Aguarde alguns minutos e tente novamente</li>
+            <li>Limpe o cache do navegador</li>
+            <li>Verifique sua conexão com a internet</li>
+            <li>Se o problema persistir, entre em contato com o suporte</li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.error-page .btn {
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.error-page .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.error-page pre {
+    text-align: left;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+</style>
+{% endblock %}

@@ -40,6 +40,9 @@ def setup_api_docs(app):
     Adiciona:
     - GET /docs - Swagger UI interativo
     - GET /apispec.json - OpenAPI specification
+    
+    FIX #6: Módulo esperado (verificado):
+    - meu_app/api/docs.py (init_swagger)
     """
     from .api.docs import init_swagger
     
@@ -92,7 +95,10 @@ def create_app(config_class=None):
     app.logger.info('Aplicação SAP iniciada')
     app.logger.info(f'Ambiente: {app.config.get("ENV", "development")}')
     app.logger.info(f'Debug: {app.debug}')
-    app.logger.info(f'Database: {app.config["SQLALCHEMY_DATABASE_URI"][:50]}...')
+    
+    # FIX #2: Usar .get() para evitar KeyError
+    db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+    app.logger.info(f'Database: {db_uri[:50]}...')
     app.logger.info('=' * 60)
     
     return app
@@ -121,6 +127,7 @@ def initialize_extensions(app):
     
     # LoginManager
     login_manager.init_app(app)
+    # FIX #1: login_view aponta para 'main.login' (verificado: BP='main' existe em routes.py)
     login_manager.login_view = 'main.login'
     login_manager.login_message = 'Por favor, faça login para acessar esta página.'
     login_manager.login_message_category = 'info'
@@ -129,7 +136,8 @@ def initialize_extensions(app):
     @login_manager.user_loader
     def load_user(user_id):
         from .models import Usuario
-        return Usuario.query.get(int(user_id))
+        # FIX #3: Migrar para db.session.get() (SQLAlchemy 2.x)
+        return db.session.get(Usuario, int(user_id))
     
     # Cache
     cache.init_app(app)
@@ -146,6 +154,12 @@ def setup_observability(app):
     - Logging estruturado JSON com request_id
     - Métricas Prometheus
     - Middleware de rastreamento de requests
+    
+    FIX #6: Módulos esperados (verificado):
+    - meu_app/obs/__init__.py (exporta setup_structured_logging, init_metrics, setup_request_tracking)
+    - meu_app/obs/logging.py (CustomJsonFormatter)
+    - meu_app/obs/metrics.py (Prometheus metrics)
+    - meu_app/obs/middleware.py (Request tracking)
     """
     from .obs import setup_structured_logging, init_metrics, setup_request_tracking
     
@@ -172,8 +186,15 @@ def register_error_handlers(app):
         app.logger.error(f'Método: {request.method}')
         app.logger.error(f'IP: {request.remote_addr}')
         
-        # Retornar resposta JSON
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # FIX #4: Respeitar Accept header (JSON vs HTML)
+        wants_json = (
+            request.is_json
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.path.startswith('/api/')
+            or request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'
+        )
+        
+        if wants_json:
             return jsonify({
                 'error': True,
                 'message': 'Erro interno do servidor' if not app.debug else str(e),
@@ -181,24 +202,40 @@ def register_error_handlers(app):
                 'timestamp': datetime.now().isoformat()
             }), 500
         
-        return jsonify({
-            'error': True,
-            'message': 'Ocorreu um erro inesperado. Por favor, tente novamente.',
-            'type': 'InternalServerError',
-            'timestamp': datetime.now().isoformat()
-        }), 500
+        # Para requisições HTML, renderizar template 500.html
+        try:
+            return render_template('500.html', error=str(e) if app.debug else None), 500
+        except Exception:
+            # Fallback se template não existir
+            return f'<h1>500 - Erro Interno</h1><p>Ocorreu um erro inesperado.</p>', 500
     
     @app.errorhandler(404)
     def not_found_error(error):
         """Manipulador para erros 404"""
         app.logger.warning(f'Página não encontrada: {request.url}')
         
-        return jsonify({
-            'error': True,
-            'message': 'Recurso não encontrado',
-            'type': 'NotFound',
-            'timestamp': datetime.now().isoformat()
-        }), 404
+        # FIX #4: Respeitar Accept header (JSON vs HTML)
+        wants_json = (
+            request.is_json
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.path.startswith('/api/')
+            or request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'
+        )
+        
+        if wants_json:
+            return jsonify({
+                'error': True,
+                'message': 'Recurso não encontrado',
+                'type': 'NotFound',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+        
+        # Para requisições HTML, renderizar template 404.html
+        try:
+            return render_template('404.html'), 404
+        except Exception:
+            # Fallback se template não existir
+            return '<h1>404 - Página Não Encontrada</h1>', 404
     
     @app.errorhandler(403)
     def forbidden_error(error):
@@ -272,24 +309,26 @@ def register_blueprints(app):
     """
     Registra todos os blueprints da aplicação (por domínio)
     
-    Blueprints registrados:
-    1. main (routes principal)
-    2. produtos
-    3. clientes
-    4. pedidos
-    5. usuarios
-    6. estoques
-    7. financeiro
-    8. coletas
-    9. apuracao
-    10. log_atividades
-    11. vendedor
+    FIX #5: url_prefix definido nos módulos (verificado):
+    - main              → (root)
+    - produtos          → /produtos
+    - clientes          → /clientes
+    - pedidos           → /pedidos
+    - usuarios          → /usuarios
+    - estoques          → /estoques
+    - financeiro        → /financeiro
+    - coletas           → /coletas
+    - apuracao          → /apuracao
+    - log_atividades    → /log_atividades
+    - vendedor          → /vendedor
+    
+    Garantia: prefixos definidos nos módulos (única fonte de verdade)
     """
-    # Blueprint principal
+    # Blueprint principal (root - login, painel, logout)
     from . import routes
     app.register_blueprint(routes.bp)
     
-    # Blueprints de domínio
+    # Blueprints de domínio (url_prefix definido em cada módulo)
     from .produtos import produtos_bp
     from .clientes import clientes_bp
     from .pedidos import pedidos_bp
@@ -301,6 +340,7 @@ def register_blueprints(app):
     from .log_atividades import log_atividades_bp
     from .vendedor import vendedor_bp
     
+    # Registrar blueprints (ordem não importa, prefixos evitam colisão)
     app.register_blueprint(produtos_bp)
     app.register_blueprint(clientes_bp)
     app.register_blueprint(pedidos_bp)
