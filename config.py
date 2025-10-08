@@ -68,6 +68,10 @@ class BaseConfig:
     GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
     OCR_MONTHLY_LIMIT = int(os.getenv('OCR_MONTHLY_LIMIT', '1000'))
     OCR_ENFORCE_LIMIT = os.getenv('OCR_ENFORCE_LIMIT', 'True').lower() == 'true'
+    
+    # RQ (Redis Queue) - Fase 7
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    RQ_ASYNC_ENABLED = os.getenv('RQ_ASYNC_ENABLED', 'True').lower() == 'true'
 
 
 class DevelopmentConfig(BaseConfig):

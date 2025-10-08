@@ -47,3 +47,6 @@ flasgger==0.9.7.1
 flask-restful==0.3.10
 apispec==6.6.1
 marshmallow==3.22.0
+
+# Fila Assíncrona (FASE 7)
+rq==1.15.1

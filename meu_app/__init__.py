@@ -144,6 +144,13 @@ def initialize_extensions(app):
     
     # Segurança (CSRF, Limiter, Talisman)
     setup_security(app)
+    
+    # RQ (Redis Queue) para processamento assíncrono - Fase 7
+    try:
+        from .queue import init_queue
+        init_queue(app)
+    except Exception as e:
+        app.logger.warning(f"⚠️ RQ não inicializado: {e}")
 
 
 def setup_observability(app):
