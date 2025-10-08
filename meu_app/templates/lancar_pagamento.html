@@ -183,6 +183,22 @@
                     let foundSomething = false;
                     ocrStatus.innerHTML = ''; // Limpa o status inicial
 
+                    const parseValor = (valor) => {
+                        if (typeof valor === 'number') {
+                            return Number.isFinite(valor) ? valor : null;
+                        }
+                        if (typeof valor === 'string') {
+                            const sanitized = valor
+                                .trim()
+                                .replace(/[R$\s]/g, '')
+                                .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+                                .replace(',', '.');
+                            const parsed = Number(sanitized);
+                            return Number.isNaN(parsed) ? null : parsed;
+                        }
+                        return null;
+                    };
+
                     // CORREÇÃO: OCR opcional e não bloqueante
                     if (data.error) {
                         // Erro crítico (não relacionado ao OCR)
@@ -208,14 +224,22 @@
                         ocrStatus.appendChild(statusDiv);
 
                         // Preencher dados se OCR funcionou
-                        if (data.valor_encontrado) {
-                            valorInput.value = data.valor_encontrado.toFixed(2);
+                        if (data.valor_encontrado !== undefined && data.valor_encontrado !== null) {
+                            const valorNumerico = parseValor(data.valor_encontrado);
+                            if (valorNumerico !== null) {
+                                valorInput.value = valorNumerico.toFixed(2);
+                                foundSomething = true;
+                            }
                             const valorStatus = document.createElement('div');
-                            valorStatus.textContent = '✅ Valor preenchido automaticamente!';
-                            valorStatus.style.color = 'green';
+                            if (valorNumerico !== null) {
+                                valorStatus.textContent = '✅ Valor preenchido automaticamente!';
+                                valorStatus.style.color = 'green';
+                            } else {
+                                valorStatus.textContent = '⚠️ OCR encontrou possível valor, mas não foi possível converter. Verifique manualmente.';
+                                valorStatus.style.color = 'orange';
+                            }
                             valorStatus.style.marginTop = '5px';
                             ocrStatus.appendChild(valorStatus);
-                            foundSomething = true;
                         }
 
                         if (data.id_transacao_encontrado) {
