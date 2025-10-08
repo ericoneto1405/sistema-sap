@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const reciboInput = document.getElementById('recibo');
     const valorInput = document.getElementById('valor');
     const idTransacaoInput = document.querySelector('input[name="id_transacao"]');
-    const ocrStatus = document.getElementById('ocr-status');
+    const ocrStatus = document.getElementById('ocr-status-principal');  // NOVO: elemento principal visível
     const metodoPagamentoInput = document.getElementById('metodo_pagamento');
     const ocrUrl = form.dataset.ocrUrl;
     
@@ -88,8 +88,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            ocrStatus.innerHTML = '🔍 Processando recibo com OCR...';
-            ocrStatus.style.color = '#2c3e50';
+            // Mostrar loading animado
+            ocrStatus.innerHTML = `
+                <div class="ocr-loading">
+                    <div class="ocr-spinner"></div>
+                    <div>
+                        <div style="font-size: 1.1em;">🔍 Conferindo Pagamento...</div>
+                        <div style="font-size: 0.85em; font-weight: normal; margin-top: 5px;">
+                            Aguarde, estamos validando o comprovante
+                        </div>
+                    </div>
+                </div>
+            `;
             ocrStatus.style.display = 'block';
 
             const formData = new FormData();
@@ -190,45 +200,61 @@ document.addEventListener('DOMContentLoaded', () => {
                         ocrStatus.appendChild(bancoStatus);
                     }
                     
-                    // NOVO: Validação do recebedor
+                    // NOVO: Validação do recebedor (MAIS VISÍVEL E PROFISSIONAL)
                     if (data.validacao_recebedor) {
                         const validacao = data.validacao_recebedor;
                         const validacaoDiv = document.createElement('div');
-                        validacaoDiv.style.marginTop = '15px';
-                        validacaoDiv.style.padding = '12px';
-                        validacaoDiv.style.borderRadius = '8px';
-                        validacaoDiv.style.fontWeight = 'bold';
+                        validacaoDiv.className = 'validation-box';
                         
                         if (validacao.valido === true) {
-                            validacaoDiv.style.background = '#d4edda';
-                            validacaoDiv.style.border = '2px solid #28a745';
-                            validacaoDiv.style.color = '#155724';
+                            validacaoDiv.classList.add('validation-success');
                             validacaoDiv.innerHTML = `
-                                <div style="margin-bottom: 8px;">✅ Pagamento para conta CORRETA (Grupo Sertão)</div>
-                                <div style="font-size: 0.85em; font-weight: normal;">${validacao.motivo.join('<br>')}</div>
-                                <div style="margin-top: 8px; font-size: 0.85em;">Confiança: ${validacao.confianca}%</div>
+                                <div style="font-size: 1.2em; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.5em;">✅</span>
+                                    <span>Pagamento para conta CORRETA</span>
+                                </div>
+                                <div style="font-size: 1em; font-weight: normal; padding: 10px; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
+                                    ${validacao.motivo.join('<br>')}
+                                </div>
+                                <div style="margin-top: 10px; font-size: 0.95em; text-align: right;">
+                                    Confiança: <strong>${validacao.confianca}%</strong>
+                                </div>
                             `;
                         } else if (validacao.valido === false) {
-                            validacaoDiv.style.background = '#fff3cd';
-                            validacaoDiv.style.border = '2px solid #ffc107';
-                            validacaoDiv.style.color = '#856404';
+                            validacaoDiv.classList.add('validation-warning');
                             validacaoDiv.innerHTML = `
-                                <div style="margin-bottom: 8px;">⚠️ ATENÇÃO: Recebedor não confere!</div>
-                                <div style="font-size: 0.85em; font-weight: normal;">${validacao.motivo.join('<br>')}</div>
-                                <div style="margin-top: 8px; font-weight: bold; color: #d9534f;">
-                                    ⚠️ VERIFIQUE se o pagamento foi feito para a conta da empresa!
+                                <div style="font-size: 1.2em; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.5em;">⚠️</span>
+                                    <span>ATENÇÃO: Recebedor Não Confere!</span>
+                                </div>
+                                <div style="font-size: 0.95em; font-weight: normal; padding: 10px; background: rgba(255, 193, 7, 0.1); border-radius: 6px; margin-bottom: 10px;">
+                                    ${validacao.motivo.join('<br>')}
+                                </div>
+                                <div style="padding: 12px; background: #fff; border: 2px dashed #d9534f; border-radius: 6px; text-align: center;">
+                                    <div style="font-size: 1.1em; color: #d9534f; font-weight: bold; margin-bottom: 5px;">
+                                        ⚠️ VERIFIQUE O COMPROVANTE
+                                    </div>
+                                    <div style="font-size: 0.9em; font-weight: normal; color: #666;">
+                                        Confirme que o pagamento foi feito para a conta da empresa
+                                    </div>
                                 </div>
                             `;
                         } else {
-                            validacaoDiv.style.background = '#e7f3ff';
-                            validacaoDiv.style.border = '2px solid #2196F3';
-                            validacaoDiv.style.color = '#0c5460';
+                            validacaoDiv.classList.add('validation-info');
                             validacaoDiv.innerHTML = `
-                                <div>ℹ️ Dados do recebedor não encontrados no comprovante</div>
-                                <div style="font-size: 0.85em; font-weight: normal; margin-top: 5px;">
-                                    Verifique manualmente se o pagamento foi feito para:<br>
-                                    PIX: <strong>pix@gruposertao.com</strong><br>
-                                    CNPJ: <strong>30.080.209/0004-16</strong>
+                                <div style="font-size: 1.1em; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.5em;">ℹ️</span>
+                                    <span>Validação Manual Necessária</span>
+                                </div>
+                                <div style="font-size: 0.95em; font-weight: normal;">
+                                    Dados do recebedor não encontrados no comprovante.
+                                </div>
+                                <div style="margin-top: 12px; padding: 12px; background: rgba(33, 150, 243, 0.1); border-radius: 6px; font-weight: normal;">
+                                    <div style="margin-bottom: 5px; font-weight: bold;">Verifique se o pagamento foi para:</div>
+                                    <div style="font-size: 0.9em; line-height: 1.6;">
+                                        📧 PIX: <strong>pix@gruposertao.com</strong><br>
+                                        🏢 CNPJ: <strong>30.080.209/0004-16</strong>
+                                    </div>
                                 </div>
                             `;
                         }

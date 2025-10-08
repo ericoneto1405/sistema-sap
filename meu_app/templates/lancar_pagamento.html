@@ -74,15 +74,92 @@
         li {
             padding: 5px 0;
         }
+        
+        /* NOVO: Estilos para área de OCR */
+        #ocr-status-principal {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-left: 5px solid #3498db;
+        }
+        
+        .ocr-loading {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .ocr-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .validation-box {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid;
+            font-weight: 600;
+        }
+        
+        .validation-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .validation-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .validation-info {
+            background: #e7f3ff;
+            border-color: #2196F3;
+            color: #0c5460;
+        }
+        
+        /* Animação de pulse para alertas */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .validation-warning {
+            animation: pulse 2s ease-in-out 3;
+        }
     </style>
 </head>
 <body>
 
     <h1>💳 Lançar Pagamento para Pedido #{{ pedido.id }}</h1>
-    <p><strong>Cliente:</strong> {{ pedido.cliente.nome }}</p>
-    <p><strong>Total do Pedido:</strong> R$ {{ '%.2f' % total }}</p>
-    <p><strong>Total já Pago:</strong> R$ {{ '%.2f' % pago }}</p>
-    <p><strong>Saldo Restante:</strong> R$ {{ '%.2f' % (saldo if saldo > 0 else 0) }}</p>
+    
+    <div style="background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+        <p><strong>Cliente:</strong> {{ pedido.cliente.nome }}</p>
+        <p><strong>Total do Pedido:</strong> R$ {{ '%.2f' % total }}</p>
+        <p><strong>Total já Pago:</strong> R$ {{ '%.2f' % pago }}</p>
+        <p><strong>Saldo Restante:</strong> <span style="color: #e67e22; font-weight: bold;">R$ {{ '%.2f' % (saldo if saldo > 0 else 0) }}</span></p>
+    </div>
+    
+    <!-- NOVO: Área de status do OCR (VISÍVEL) -->
+    <div id="ocr-status-principal" style="display: none;"></div>
 
     <form method="POST"
           id="form-pagamento"
@@ -121,8 +198,6 @@
     </ul>
 
     <a href="{{ url_for('financeiro.listar_financeiro') }}" class="voltar">⬅ Voltar ao Financeiro</a>
-
-    <div id="ocr-status" style="display: none; margin-top: 15px; font-weight: bold;"></div>
 
     <script src="{{ url_for('static', filename='js/financeiro_pagamento.js') }}" nonce="{{ nonce }}" defer></script>
     
