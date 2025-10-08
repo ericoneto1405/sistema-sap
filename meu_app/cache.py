@@ -38,7 +38,7 @@ from flask import request, current_app
 from werkzeug.exceptions import BadRequest
 
 # Importar cache da instância
-from . import cache as cache_instance
+from . import flask_cache as cache_instance
 
 # Importar métricas para tracking
 try:

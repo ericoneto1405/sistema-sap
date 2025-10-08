@@ -499,7 +499,7 @@ def readiness():
     
     try:
         # 2. Verificar cache
-        from . import cache as cache_instance
+        from . import flask_cache as cache_instance
         cache_instance.set('readiness_check', 'ok', timeout=10)
         result = cache_instance.get('readiness_check')
         checks['cache'] = (result == 'ok')

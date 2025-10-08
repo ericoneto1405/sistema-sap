@@ -16,7 +16,7 @@ from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, render_template
-from flask_caching import Cache
+from flask_caching import Cache as FlaskCache
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -29,7 +29,7 @@ load_dotenv()
 # Inicializar extensões (sem app ainda)
 db = SQLAlchemy()
 migrate = Migrate()
-cache = Cache()
+flask_cache = FlaskCache()  # Renomeado para evitar conflito com meu_app/cache.py
 login_manager = LoginManager()
 
 
@@ -139,8 +139,8 @@ def initialize_extensions(app):
         # FIX #3: Migrar para db.session.get() (SQLAlchemy 2.x)
         return db.session.get(Usuario, int(user_id))
     
-    # Cache
-    cache.init_app(app)
+    # Cache (Flask-Caching)
+    flask_cache.init_app(app)
     
     # Segurança (CSRF, Limiter, Talisman)
     setup_security(app)

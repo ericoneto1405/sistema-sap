@@ -191,7 +191,8 @@ def testar_fluxo_completo():
             from meu_app.coletas.services.coleta_service import ColetaService
             
             pedidos_disponiveis = ColetaService.listar_pedidos_para_coleta()
-            ids_disponiveis = [p['id'] for p in pedidos_disponiveis]
+            # Retorna dict com 'pedido' como chave
+            ids_disponiveis = [p['pedido'].id for p in pedidos_disponiveis]
             
             print(f"📋 Pedidos disponíveis para coleta: {len(pedidos_disponiveis)}")
             print(f"🔍 IDs disponíveis: {ids_disponiveis}")
