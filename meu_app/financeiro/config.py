@@ -14,19 +14,23 @@ class FinanceiroConfig:
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
     ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'}
     
-    # Configurações de OCR - APENAS Google Vision
+    # Configurações de OCR - Google Vision
     OCR_CACHE_ENABLED = True
     OCR_CACHE_DIR = 'uploads/temp_recibos/.ocr_cache'
-    OCR_TIMEOUT_SECONDS = 12
+    OCR_OPERATION_TIMEOUT = 120
+    OCR_MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB
     
     # Configurações de quota OCR
     OCR_ENFORCE_LIMIT = True
     OCR_MONTHLY_LIMIT = 1000
-    # OCR_BACKEND removido - usando APENAS Google Vision
     
     # Configurações Google Vision
     GOOGLE_VISION_CREDENTIALS_PATH = '/Users/ericobrandao/keys/gvision-credentials.json'
     GOOGLE_VISION_DETECTION_TYPE = 'TEXT_DETECTION'  # ou 'DOCUMENT_TEXT_DETECTION'
+    GOOGLE_VISION_INPUT_BUCKET = 'sap-ocr-input'
+    GOOGLE_VISION_INPUT_PREFIX = 'financeiro/ocr/input'
+    GOOGLE_VISION_OUTPUT_BUCKET = 'sap-ocr-output'
+    GOOGLE_VISION_OUTPUT_PREFIX = 'financeiro/ocr/output'
     
     # Configurações de validação
     PIX_REQUIRES_RECEIPT = False
@@ -66,6 +70,11 @@ class FinanceiroConfig:
         return cls.ALLOWED_EXTENSIONS
     
     @classmethod
+    def get_max_pdf_size(cls) -> int:
+        """Retorna o tamanho máximo do PDF aceito antes do envio ao Vision"""
+        return int(os.getenv('FINANCEIRO_MAX_PDF_SIZE', cls.OCR_MAX_PDF_SIZE))
+    
+    @classmethod
     def is_pix_payment_requiring_receipt(cls) -> bool:
         """Verifica se pagamentos PIX requerem comprovante"""
         return cls.PIX_REQUIRES_RECEIPT
@@ -80,4 +89,33 @@ class FinanceiroConfig:
         """Retorna o limite mensal de OCR"""
         return cls.OCR_MONTHLY_LIMIT
     
-    # Método get_ocr_backend removido - usando APENAS Google Vision
+    @classmethod
+    def get_ocr_operation_timeout(cls) -> int:
+        """Retorna timeout máximo (segundos) para operação assíncrona do Vision"""
+        return int(os.getenv('FINANCEIRO_OCR_TIMEOUT', cls.OCR_OPERATION_TIMEOUT))
+    
+    @classmethod
+    def get_detection_type(cls) -> str:
+        """Retorna o modo de detecção a usar para imagens"""
+        value = os.getenv('GOOGLE_VISION_DETECTION_TYPE', cls.GOOGLE_VISION_DETECTION_TYPE)
+        return value.upper() if value else 'TEXT_DETECTION'
+    
+    @classmethod
+    def get_gcs_input_bucket(cls) -> str:
+        """Bucket de entrada para PDFs"""
+        return os.getenv('FINANCEIRO_OCR_INPUT_BUCKET', cls.GOOGLE_VISION_INPUT_BUCKET)
+    
+    @classmethod
+    def get_gcs_input_prefix(cls) -> str:
+        """Prefixo do objeto no bucket de entrada"""
+        return os.getenv('FINANCEIRO_OCR_INPUT_PREFIX', cls.GOOGLE_VISION_INPUT_PREFIX).strip('/')
+    
+    @classmethod
+    def get_gcs_output_bucket(cls) -> str:
+        """Bucket de saída para resultados OCR"""
+        return os.getenv('FINANCEIRO_OCR_OUTPUT_BUCKET', cls.GOOGLE_VISION_OUTPUT_BUCKET)
+    
+    @classmethod
+    def get_gcs_output_prefix(cls) -> str:
+        """Prefixo do objeto no bucket de saída"""
+        return os.getenv('FINANCEIRO_OCR_OUTPUT_PREFIX', cls.GOOGLE_VISION_OUTPUT_PREFIX).strip('/')

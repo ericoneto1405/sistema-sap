@@ -1,26 +1,23 @@
 """
-Serviço de OCR usando Google Vision API - Versão aprimorada.
+Serviço de OCR usando Google Vision API - Versão baseada em GCS.
 """
 import os
 import json
 import re
-import tempfile
-from typing import Optional, Dict
+import uuid
+from typing import Optional, Dict, List, Tuple
 from datetime import datetime
-from google.cloud import vision
+from google.cloud import vision, storage
+from google.api_core.exceptions import NotFound
 from .config import FinanceiroConfig
 from .exceptions import OcrProcessingError
-
-try:
-    from pdf2image import convert_from_path
-except ImportError:
-    convert_from_path = None
 
 
 class VisionOcrService:
     """Serviço de OCR usando Google Vision API com extração avançada de dados"""
     
     _client = None
+    _storage_client = None
     _initialized = False
     
     @classmethod
@@ -32,12 +29,10 @@ class VisionOcrService:
         """
         if cls._client is None:
             try:
-                # Verificar se as credenciais estão configuradas
                 credentials_path = FinanceiroConfig.GOOGLE_VISION_CREDENTIALS_PATH
                 if not credentials_path or not os.path.exists(credentials_path):
                     raise OcrProcessingError("Credenciais do Google Vision não configuradas ou arquivo não encontrado")
                 
-                # Configurar variável de ambiente se necessário
                 if not os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
                     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
                 
@@ -53,160 +48,189 @@ class VisionOcrService:
         return cls._client
     
     @classmethod
+    def _get_storage_client(cls):
+        """Obtém cliente do Google Cloud Storage"""
+        if cls._storage_client is None:
+            try:
+                credentials_path = FinanceiroConfig.GOOGLE_VISION_CREDENTIALS_PATH
+                if not credentials_path or not os.path.exists(credentials_path):
+                    raise OcrProcessingError("Credenciais do Google Vision não configuradas ou arquivo não encontrado")
+                
+                if not os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+                    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+                
+                cls._storage_client = storage.Client()
+            except Exception as e:
+                print(f"Erro ao inicializar Storage: {e}")
+                raise OcrProcessingError(f"Falha ao inicializar Storage: {str(e)}")
+        return cls._storage_client
+    
+    @classmethod
     def is_initialized(cls) -> bool:
         """Verifica se o Google Vision foi inicializado"""
         return cls._initialized
     
-    @classmethod
-    def _convert_pdf_to_image(cls, pdf_path: str) -> str:
-        """
-        Converte PDF para imagem usando pdf2image
-        Returns:
-            str: Caminho da imagem convertida
-        """
-        if convert_from_path is None:
-            raise OcrProcessingError("pdf2image não está instalado. Execute: pip install pdf2image")
-        
-        try:
-            # OTIMIZAÇÃO 1: Validação prévia do PDF
-            if not os.path.exists(pdf_path):
-                raise OcrProcessingError("PDF não encontrado")
-            
-            pdf_size = os.path.getsize(pdf_path)
-            if pdf_size == 0:
-                raise OcrProcessingError("PDF está vazio")
-            
-            # Limite de 10MB para PDF (antes da conversão)
-            if pdf_size > 10 * 1024 * 1024:  # 10MB
-                raise OcrProcessingError(f"PDF muito grande ({pdf_size:,} bytes). Limite: 10MB")
-            
-            print(f"📄 PDF validado: {pdf_size:,} bytes")
-            
-            # Criar diretório temporário
-            temp_dir = tempfile.mkdtemp()
-            
-            # OTIMIZAÇÃO 2: Configurações otimizadas (2 tentativas em vez de 4)
-            configs = [
-                {"dpi": 120, "format": "JPEG", "quality": 90},  # Configuração otimizada
-                {"dpi": 100, "format": "PNG", "quality": None}   # Fallback de alta qualidade
-            ]
-            
-            for i, config in enumerate(configs):
-                try:
-                    print(f"🔍 Tentativa {i+1}: DPI={config['dpi']}, Formato={config['format']}, Qualidade={config.get('quality', 'N/A')}")
-                    
-                    # Converter primeira página do PDF
-                    pages = convert_from_path(
-                        pdf_path, 
-                        first_page=1, 
-                        last_page=1, 
-                        dpi=config['dpi']
-                    )
-                    
-                    if not pages:
-                        print(f"❌ Conversão falhou - nenhuma página retornada")
-                        continue
-                    
-                    # Salvar com configuração atual
-                    ext = config['format'].lower()
-                    image_path = os.path.join(temp_dir, f"converted_page.{ext}")
-                    
-                    # OTIMIZAÇÃO 3: Salvar com configurações otimizadas
-                    if config['quality']:
-                        pages[0].save(
-                            image_path, 
-                            config['format'], 
-                            quality=config['quality'], 
-                            optimize=True
-                        )
-                    else:
-                        pages[0].save(
-                            image_path, 
-                            config['format'], 
-                            optimize=True
-                        )
-                    
-                    # OTIMIZAÇÃO 4: Validação robusta do arquivo convertido
-                    if not os.path.exists(image_path):
-                        print(f"❌ Arquivo não foi criado")
-                        continue
-                    
-                    file_size = os.path.getsize(image_path)
-                    if file_size == 0:
-                        print(f"❌ Arquivo está vazio")
-                        continue
-                    
-                    # Verificar se arquivo não é muito grande (limite Google Vision: 20MB)
-                    if file_size > 20 * 1024 * 1024:  # 20MB
-                        print(f"❌ Arquivo muito grande: {file_size:,} bytes")
-                        continue
-                    
-                    print(f"✅ PDF convertido com sucesso: {image_path} ({file_size:,} bytes)")
-                    return image_path
-                    
-                except Exception as e:
-                    print(f"❌ Tentativa {i+1} falhou: {e}")
-                    continue
-            
-            # Se todas as tentativas falharam
-            raise OcrProcessingError("Todas as tentativas de conversão PDF falharam")
-            
-        except OcrProcessingError:
-            raise
-        except Exception as e:
-            raise OcrProcessingError(f"Erro ao converter PDF para imagem: {str(e)}")
-        finally:
-            # OTIMIZAÇÃO 5: Limpeza robusta de arquivos temporários
-            # NOTA: Não removemos temp_dir aqui pois o código atual já limpa os arquivos
-            # e remover o diretório aqui causaria erro
-            pass
+    @staticmethod
+    def _split_gcs_uri(uri: str) -> Tuple[str, str]:
+        if not uri.startswith("gs://"):
+            raise OcrProcessingError(f"URI inválida para GCS: {uri}")
+        path = uri[5:]
+        bucket, _, blob = path.partition('/')
+        if not bucket or not blob:
+            raise OcrProcessingError(f"URI incompleta para GCS: {uri}")
+        return bucket, blob
     
     @classmethod
-    def _extract_text_from_image(cls, file_path: str) -> str:
+    def _upload_pdf_to_gcs(cls, file_path: str) -> str:
+        """Carrega PDF para bucket de entrada e retorna URI gs://"""
+        if not os.path.exists(file_path):
+            raise OcrProcessingError("PDF não encontrado")
+        
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            raise OcrProcessingError("PDF está vazio")
+        
+        max_size = FinanceiroConfig.get_max_pdf_size()
+        if max_size and file_size > max_size:
+            raise OcrProcessingError(f"PDF muito grande ({file_size} bytes). Limite: {max_size} bytes")
+        
+        storage_client = cls._get_storage_client()
+        bucket_name = FinanceiroConfig.get_gcs_input_bucket()
+        object_prefix = FinanceiroConfig.get_gcs_input_prefix()
+        blob_name = f"{object_prefix}/{uuid.uuid4()}.pdf" if object_prefix else f"{uuid.uuid4()}.pdf"
+        
+        try:
+            bucket = storage_client.bucket(bucket_name)
+            blob = bucket.blob(blob_name)
+            blob.upload_from_filename(file_path, content_type="application/pdf")
+            print(f"PDF enviado para GCS: gs://{bucket_name}/{blob_name}")
+            return f"gs://{bucket_name}/{blob_name}"
+        except Exception as exc:
+            raise OcrProcessingError(f"Falha ao enviar PDF para GCS: {exc}")
+    
+    @classmethod
+    def _prepare_output_uri(cls) -> Tuple[str, str]:
+        """Gera URI de saída única para resultados do OCR"""
+        bucket = FinanceiroConfig.get_gcs_output_bucket()
+        prefix = FinanceiroConfig.get_gcs_output_prefix()
+        output_id = uuid.uuid4()
+        object_prefix = f"{prefix}/{output_id}" if prefix else str(output_id)
+        output_uri = f"gs://{bucket}/{object_prefix}/"
+        return output_uri, object_prefix
+    
+    @classmethod
+    def _fetch_output_text(cls, output_uri: str) -> str:
+        """Baixa os resultados do Vision do bucket de saída"""
+        storage_client = cls._get_storage_client()
+        bucket_name, prefix = cls._split_gcs_uri(output_uri)
+        # Remover barra final para listagem
+        prefix = prefix.rstrip('/')
+        
+        texts: List[str] = []
+        try:
+            blobs = list(storage_client.list_blobs(bucket_name, prefix=prefix))
+        except Exception as exc:
+            raise OcrProcessingError(f"Falha ao listar resultados no GCS: {exc}")
+        
+        if not blobs:
+            raise OcrProcessingError("Vision não retornou resultados para o PDF enviado")
+        
+        for blob in blobs:
+            try:
+                data = json.loads(blob.download_as_text())
+                for response in data.get('responses', []):
+                    full_text = response.get('fullTextAnnotation', {}).get('text')
+                    if full_text:
+                        texts.append(full_text)
+            except Exception as exc:
+                print(f"Erro ao ler resultado OCR ({blob.name}): {exc}")
+                continue
+        
+        combined = "\n".join(texts).strip()
+        if not combined:
+            raise OcrProcessingError("Vision processou o PDF mas não encontrou texto")
+        return combined
+    
+    @classmethod
+    def _cleanup_gcs_resources(cls, input_uri: str, output_uri: str):
+        """Remove arquivos temporários do GCS"""
+        storage_client = cls._get_storage_client()
+        
+        # Remover PDF de entrada
+        try:
+            bucket_name, blob_name = cls._split_gcs_uri(input_uri)
+            storage_client.bucket(bucket_name).blob(blob_name).delete()
+        except NotFound:
+            pass
+        except Exception as exc:
+            print(f"Falha ao remover PDF de entrada no GCS: {exc}")
+        
+        # Remover resultados
+        try:
+            bucket_name, prefix = cls._split_gcs_uri(output_uri)
+            prefix = prefix.rstrip('/')
+            bucket = storage_client.bucket(bucket_name)
+            for blob in storage_client.list_blobs(bucket_name, prefix=prefix):
+                try:
+                    bucket.blob(blob.name).delete()
+                except Exception as exc:
+                    print(f"Falha ao remover resultado OCR ({blob.name}): {exc}")
+        except NotFound:
+            pass
+        except Exception as exc:
+            print(f"Falha ao limpar resultados OCR no GCS: {exc}")
+    
+    @classmethod
+    def _extract_text_from_file(cls, file_path: str) -> str:
         """
-        Usa o Google Vision para extrair texto de uma imagem ou documento.
-        Detecta automaticamente o tipo de arquivo e usa o método apropriado.
+        Usa o Google Vision para extrair texto de PDFs (via GCS) ou imagens locais.
         """
         try:
             client = cls._get_client()
-            
-            # CORREÇÃO CRÍTICA: Detectar tipo de arquivo PRIMEIRO
             file_ext = os.path.splitext(file_path)[1].lower()
             is_pdf = file_ext == '.pdf'
             
-            # Processar arquivo baseado no tipo
             if is_pdf:
-                # Para PDFs, converter para imagem primeiro
-                print(f"🔍 Convertendo PDF para imagem...")
-                image_path = cls._convert_pdf_to_image(file_path)
+                input_uri = cls._upload_pdf_to_gcs(file_path)
+                output_uri, _ = cls._prepare_output_uri()
                 
-                # Ler imagem convertida
-                with open(image_path, 'rb') as image_file:
-                    content = image_file.read()
+                feature = vision.Feature(type=vision.Feature.Type.DOCUMENT_TEXT_DETECTION)
+                gcs_source = vision.GcsSource(uri=input_uri)
+                input_config = vision.InputConfig(gcs_source=gcs_source, mime_type="application/pdf")
+                gcs_destination = vision.GcsDestination(uri=output_uri)
+                output_config = vision.OutputConfig(gcs_destination=gcs_destination, batch_size=1)
                 
-                image = vision.Image(content=content)
-                print(f"🔍 Processando imagem convertida com text_detection...")
-                response = client.text_detection(image=image)
+                request = vision.AsyncAnnotateFileRequest(
+                    features=[feature],
+                    input_config=input_config,
+                    output_config=output_config,
+                )
                 
-                # Limpar arquivo temporário DEPOIS do processamento
+                print("🔍 Iniciando OCR assíncrono para PDF...")
+                operation = client.async_batch_annotate_files(requests=[request])
+                timeout = FinanceiroConfig.get_ocr_operation_timeout()
+                operation.result(timeout=timeout)
+                print("✅ OCR concluído pelo Vision, baixando resultado...")
+                
                 try:
-                    os.remove(image_path)
-                    os.rmdir(os.path.dirname(image_path))
-                except:
-                    pass
-            else:
-                # Para imagens, ler diretamente
-                with open(file_path, 'rb') as image_file:
-                    content = image_file.read()
+                    text = cls._fetch_output_text(output_uri)
+                finally:
+                    cls._cleanup_gcs_resources(input_uri, output_uri)
                 
-                image = vision.Image(content=content)
-                print(f"🔍 Processando imagem com text_detection...")
+                return text
+            
+            with open(file_path, 'rb') as image_file:
+                content = image_file.read()
+            
+            image = vision.Image(content=content)
+            detection_type = FinanceiroConfig.get_detection_type()
+            if detection_type == 'DOCUMENT_TEXT_DETECTION':
+                response = client.document_text_detection(image=image)
+            else:
                 response = client.text_detection(image=image)
             
-            # Verificar se há erro na resposta (respeitando code == 0 como sucesso)
             error_info = getattr(response, 'error', None)
             if error_info and getattr(error_info, 'code', 0):
-                # Tentar obter mensagem de erro de diferentes formas
                 error_msg = None
                 if getattr(error_info, 'message', None):
                     error_msg = error_info.message
@@ -216,10 +240,8 @@ class VisionOcrService:
                     error_msg = str(error_info)
                 else:
                     error_msg = "Erro desconhecido do Google Vision"
-                
                 raise OcrProcessingError(f"Erro do Google Vision: {error_msg}")
             
-            # Extrair texto dos resultados (sempre usando text_detection)
             texts = []
             for text in response.text_annotations:
                 texts.append(text.description)
@@ -424,14 +446,14 @@ class VisionOcrService:
         Retorna um dicionário com todos os dados encontrados.
         """
         try:
-            text = cls._extract_text_from_image(file_path)
+            text = cls._extract_text_from_file(file_path)
             if not text:
                 return {
                     'amount': None, 
                     'transaction_id': None,
                     'date': None,
                     'bank_info': {},
-                    'error': 'Não foi possível extrair texto da imagem.'
+                    'error': 'Não foi possível extrair texto do documento.'
                 }
 
             # Extrair todos os dados
