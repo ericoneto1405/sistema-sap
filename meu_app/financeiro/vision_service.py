@@ -377,22 +377,22 @@ class VisionOcrService:
         # Padrão 2: IDs PIX padrão brasileiro (começam com E ou D)
         # Formato: E00000000202510021939023026977590 (32+ caracteres)
         pix_pattern = r'\b([ED][0-9]{25,40})\b'
-        matches = re.findall(pix_pattern, text_upper)
+        matches = re.findall(pix_pattern, text_normalized)
         if matches:
             # Retornar o mais longo (geralmente mais completo)
             return max(matches, key=len)
         
         # Padrão 3: Sequências alfanuméricas longas (15-50 chars)
         # Após palavras-chave relacionadas a transação
-        context_pattern = r'(?:TRANSA(?:ÇÃO|CAO)|PAGAMENTO|PIX|TRANSFER[EÊ]NCIA)\s*[:\-]?\s*([A-Z0-9]{15,50})'
-        matches = re.findall(context_pattern, text_upper)
+        context_pattern = r'(?:TRANSACAO|PAGAMENTO|PIX|TRANSFERENCIA)\s*[:\-]?\s*([A-Z0-9]{15,50})'
+        matches = re.findall(context_pattern, text_normalized)
         if matches:
             return matches[0].strip()
         
         # Padrão 4: Busca genérica por códigos longos
         # Evitar datas (com /) e valores (com , ou R$)
         generic_pattern = r'\b([A-Z0-9]{20,50})\b'
-        matches = re.findall(generic_pattern, text_upper)
+        matches = re.findall(generic_pattern, text_normalized)
         if matches:
             # Filtrar candidatos válidos
             for candidate in matches:
