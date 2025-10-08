@@ -180,6 +180,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('OCR retorno:', data);
                     let foundSomething = false;
                     ocrStatus.innerHTML = ''; // Limpa o status inicial
 

@@ -407,13 +407,30 @@ def metrics():
 def healthz():
     """
     Healthcheck liveness probe
-    
-    Verifica se a aplicação está viva e respondendo.
-    Usado por Kubernetes/Docker para restart automático.
-    
-    Returns:
-        200 OK se aplicação está viva
-        500 Error se aplicação não pode responder
+    ---
+    tags:
+      - Health
+    summary: Verifica se aplicação está viva
+    description: |
+      Endpoint de liveness probe para Kubernetes/Docker.
+      Retorna 200 se a aplicação está respondendo.
+    responses:
+      200:
+        description: Aplicação está saudável
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: healthy
+            service:
+              type: string
+              example: sistema-sap
+            timestamp:
+              type: string
+              format: date-time
+      500:
+        description: Aplicação não está saudável
     """
     try:
         # Verificação básica - app está respondendo
@@ -435,14 +452,36 @@ def healthz():
 def readiness():
     """
     Readiness probe
-    
-    Verifica se a aplicação está pronta para receber tráfego.
-    Valida conexões com banco de dados, cache, etc.
-    Usado por load balancers e orquestradores.
-    
-    Returns:
-        200 OK se pronta para tráfego
-        503 Service Unavailable se não estiver pronta
+    ---
+    tags:
+      - Health
+    summary: Verifica se aplicação está pronta para tráfego
+    description: |
+      Endpoint de readiness probe para load balancers.
+      Valida conexões com dependências críticas:
+      - Banco de dados
+      - Cache Redis
+    responses:
+      200:
+        description: Aplicação pronta para receber tráfego
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: ready
+            checks:
+              type: object
+              properties:
+                database:
+                  type: boolean
+                cache:
+                  type: boolean
+            timestamp:
+              type: string
+              format: date-time
+      503:
+        description: Aplicação não está pronta
     """
     checks = {
         'database': False,

@@ -66,6 +66,9 @@ def create_app(config_class=None):
     # Registrar blueprints
     register_blueprints(app)
     
+    # FASE 10: Documentação OpenAPI/Swagger
+    setup_api_docs(app)
+    
     # Warm-up do OCR (opcional)
     warmup_ocr(app)
     
@@ -139,6 +142,21 @@ def setup_observability(app):
     
     # 3. Middleware de rastreamento
     setup_request_tracking(app)
+
+
+def setup_api_docs(app):
+    """
+    Configura documentação OpenAPI/Swagger (FASE 10)
+    
+    Adiciona:
+    - GET /docs - Swagger UI interativo
+    - GET /apispec.json - OpenAPI specification
+    """
+    from .api.docs import init_swagger
+    
+    init_swagger(app)
+    
+    app.logger.info('Documentação OpenAPI disponível em /docs')
 
 
 def register_error_handlers(app):

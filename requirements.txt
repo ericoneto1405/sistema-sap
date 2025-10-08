@@ -41,3 +41,8 @@ prometheus-client==0.20.0
 # Cache e Performance (FASE 8)
 # Redis já está instalado (usado em Flask-Limiter)
 # Flask-Caching já está instalado
+
+# Documentação OpenAPI (FASE 10)
+flasgger==0.9.7.1
+apispec==6.6.1
+marshmallow==3.22.0
