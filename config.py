@@ -23,7 +23,13 @@ class BaseConfig:
     
     # Banco de dados
     # SQLite requer /// para caminho relativo ou //// para caminho absoluto
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", f"sqlite:///{os.path.abspath(os.path.join(BASE_DIR, 'instance', 'sistema.db'))}")
+    # FIX: Ignorar DATABASE_URL se tiver valores de exemplo inválidos
+    _db_url = os.getenv("DATABASE_URL", "")
+    if _db_url and ("usuario" in _db_url or "senha" in _db_url or "porta" in _db_url or "host" in _db_url):
+        # DATABASE_URL tem valores de exemplo, ignorar
+        _db_url = ""
+    
+    SQLALCHEMY_DATABASE_URI = _db_url or f"sqlite:///{os.path.abspath(os.path.join(BASE_DIR, 'instance', 'sistema.db'))}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
     

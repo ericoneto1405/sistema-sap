@@ -91,13 +91,14 @@ def setup_structured_logging(app):
     
     # Configurar formatter JSON
     json_formatter = CustomJsonFormatter(
-        '%(timestamp)s %(level)s %(name)s %(message)s',
+        '%(asctime)s %(levelname)s %(name)s %(message)s',
         rename_fields={
             'asctime': 'timestamp',
             'levelname': 'level',
             'name': 'logger'
         },
-        datefmt='%Y-%m-%dT%H:%M:%S'
+        datefmt='%Y-%m-%dT%H:%M:%S',
+        timestamp=True
     )
     
     # Handler para arquivo com rotação
