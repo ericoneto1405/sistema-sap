@@ -77,6 +77,27 @@ class DevelopmentConfig(BaseConfig):
     SESSION_COOKIE_SECURE = False
     LOG_LEVEL = 'DEBUG'
     RATELIMIT_DEFAULT = "500 per hour"
+    
+    # CSP mais permissivo para desenvolvimento (permite CDNs e scripts inline)
+    CSP_DIRECTIVES = {
+        "default-src": ["'self'"],
+        "script-src": [
+            "'self'", 
+            "'unsafe-inline'",  # Permite scripts inline em dev
+            "https://cdn.jsdelivr.net",
+            "https://code.jquery.com",
+            "https://cdnjs.cloudflare.com"
+        ],
+        "style-src": [
+            "'self'", 
+            "'unsafe-inline'",
+            "https://cdn.jsdelivr.net",
+            "https://fonts.googleapis.com"
+        ],
+        "img-src": ["'self'", "data:", "https:"],
+        "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net", "https://fonts.gstatic.com"],
+        "connect-src": ["'self'"],
+    }
 
 
 class TestingConfig(BaseConfig):
