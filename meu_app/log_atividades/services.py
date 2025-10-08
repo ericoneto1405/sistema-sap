@@ -15,13 +15,17 @@ import json
 from datetime import datetime, timedelta
 from sqlalchemy import desc, and_, or_, func
 from ..exceptions import DatabaseError, ValidationError, handle_database_error
+from .repositories import LogAtividadeRepository
 
 
 class LogAtividadesService:
     """Serviço para operações relacionadas ao log de atividades"""
     
-    @staticmethod
-    def registrar_atividade(tipo_atividade: str, titulo: str, descricao: str, 
+    def __init__(self):
+        """Inicializa o serviço com seu repository"""
+        self.repository = LogAtividadeRepository()
+    
+    def registrar_atividade(self, tipo_atividade: str, titulo: str, descricao: str, 
                           modulo: str, dados_extras: Dict = None, 
                           usuario_id: int = None, ip_address: str = None) -> Tuple[bool, str, Optional[LogAtividade]]:
         """
@@ -85,19 +89,17 @@ class LogAtividadesService:
                 ip_address=ip_address
             )
             
-            db.session.add(atividade)
-            db.session.commit()
+            # Usar repository para criar
+            atividade = self.repository.criar(atividade)
             
             current_app.logger.info(f"Atividade registrada: {tipo_atividade} - {titulo}")
             return True, "Atividade registrada com sucesso", atividade
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao registrar atividade: {str(e)}")
             return False, f"Erro ao registrar atividade: {str(e)}", None
     
-    @staticmethod
-    def listar_atividades(filtro_modulo: str = None, data_inicio: str = None, data_fim: str = None, 
+    def listar_atividades(self, filtro_modulo: str = None, data_inicio: str = None, data_fim: str = None, 
                          page: int = 1, per_page: int = 20) -> Dict[str, Any]:
         """
         Lista atividades do sistema com paginação otimizada

@@ -16,7 +16,8 @@ def listar_clientes():
         # Obter mensagem de erro da URL, se houver
         error_message = request.args.get('error')
 
-        clientes = ClienteService.listar_clientes()
+        service = ClienteService()
+        clientes = service.listar_clientes()
         current_app.logger.info(f"Listagem de clientes acessada por {session.get('usuario_nome', 'N/A')}")
         
         # Passar a mensagem de erro para o template
@@ -41,7 +42,8 @@ def novo_cliente():
         cpf_cnpj = request.form.get('cpf_cnpj', '').strip()
         
         # Usar o serviço para criar o cliente
-        sucesso, mensagem, cliente = ClienteService.criar_cliente(
+        service = ClienteService()
+        sucesso, mensagem, cliente = service.criar_cliente(
             nome=nome,
             fantasia=fantasia,
             telefone=telefone,
@@ -74,6 +76,8 @@ def novo_cliente():
 @permissao_necessaria('acesso_clientes')
 def editar_cliente(id):
     """Edita um cliente existente"""
+    service = ClienteService()
+    
     if request.method == 'POST':
         # Extrair dados do formulário
         nome = request.form.get('nome', '').strip()
@@ -84,7 +88,7 @@ def editar_cliente(id):
         cpf_cnpj = request.form.get('cpf_cnpj', '').strip()
         
         # Usar o serviço para editar o cliente
-        sucesso, mensagem, cliente = ClienteService.editar_cliente(
+        sucesso, mensagem, cliente = service.editar_cliente(
             cliente_id=id,
             nome=nome,
             fantasia=fantasia,
@@ -112,7 +116,7 @@ def editar_cliente(id):
             })
     
     # GET: Buscar cliente e mostrar formulário
-    cliente = ClienteService.buscar_cliente_por_id(id)
+    cliente = service.buscar_cliente_por_id(id)
     if not cliente:
         flash('Cliente não encontrado', 'error')
         return redirect(url_for('clientes.listar_clientes'))
@@ -125,7 +129,8 @@ def editar_cliente(id):
 def excluir_cliente(id):
     """Exclui um cliente"""
     # Usar o serviço para excluir o cliente
-    sucesso, mensagem = ClienteService.excluir_cliente(id)
+    service = ClienteService()
+    sucesso, mensagem = service.excluir_cliente(id)
     
     if sucesso:
         current_app.logger.info(f"Cliente excluído (ID: {id}) por {session.get('usuario_nome', 'N/A')}")

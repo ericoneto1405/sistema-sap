@@ -30,7 +30,8 @@ def listar_usuarios():
         }
         
         # Usar o serviço para criar o usuário
-        sucesso, mensagem, usuario = UsuarioService.criar_usuario(nome, senha, tipo, acessos)
+        service = UsuarioService()
+        sucesso, mensagem, usuario = service.criar_usuario(nome, senha, tipo, acessos)
         
         if sucesso:
             current_app.logger.info(f"Usuário criado por {session.get('usuario_nome', 'N/A')}")
@@ -41,7 +42,8 @@ def listar_usuarios():
         return redirect(url_for('usuarios.listar_usuarios'))
     
     # Listar usuários
-    usuarios = UsuarioService.listar_usuarios()
+    service = UsuarioService()
+    usuarios = service.listar_usuarios()
     current_app.logger.info(f"Listagem de usuários acessada por {session.get('usuario_nome', 'N/A')}")
     return render_template('usuarios.html', usuarios=usuarios)
 
@@ -54,7 +56,8 @@ def alterar_senha_usuario(id):
     nova_senha = request.form.get('nova_senha')
     confirmar_senha = request.form.get('confirmar_senha')
     
-    sucesso, mensagem = UsuarioService.alterar_senha_usuario(id, senha_atual, nova_senha, confirmar_senha)
+    service = UsuarioService()
+    sucesso, mensagem = service.alterar_senha_usuario(id, senha_atual, nova_senha, confirmar_senha)
     
     if sucesso:
         current_app.logger.info(f"Senha alterada para usuário (ID: {id}) por {session.get('usuario_nome', 'N/A')}")
@@ -80,7 +83,8 @@ def editar_usuario(id):
         'acesso_logistica': 'acesso_logistica' in request.form
     }
     
-    sucesso, mensagem = UsuarioService.editar_usuario(id, nome, tipo, acessos)
+    service = UsuarioService()
+    sucesso, mensagem = service.editar_usuario(id, nome, tipo, acessos)
     
     if sucesso:
         current_app.logger.info(f"Usuário editado (ID: {id}) por {session.get('usuario_nome', 'N/A')}")
@@ -98,7 +102,8 @@ def redefinir_senha_usuario(id):
     nova_senha = request.form.get('nova_senha')
     senha_admin = request.form.get('senha_admin')
     
-    sucesso, mensagem = UsuarioService.redefinir_senha_usuario(id, nova_senha, senha_admin)
+    service = UsuarioService()
+    sucesso, mensagem = service.redefinir_senha_usuario(id, nova_senha, senha_admin)
     
     if sucesso:
         current_app.logger.info(f"Senha redefinida para usuário (ID: {id}) por {session.get('usuario_nome', 'N/A')}")
@@ -114,7 +119,8 @@ def redefinir_senha_usuario(id):
 def excluir_usuario(id):
     """Exclui um usuário"""
     # Usar o serviço para excluir o usuário
-    sucesso, mensagem = UsuarioService.excluir_usuario(id)
+    service = UsuarioService()
+    sucesso, mensagem = service.excluir_usuario(id)
     
     if sucesso:
         current_app.logger.info(f"Usuário excluído (ID: {id}) por {session.get('usuario_nome', 'N/A')}")

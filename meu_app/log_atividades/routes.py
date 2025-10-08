@@ -27,7 +27,8 @@ def listar_atividades():
             per_page = 20
         
         # Buscar atividades com paginação
-        resultado = LogAtividadesService.listar_atividades(
+        service = LogAtividadesService()
+        resultado = service.listar_atividades(
             filtro_modulo=filtro_modulo,
             data_inicio=data_inicio,
             data_fim=data_fim,
@@ -36,7 +37,8 @@ def listar_atividades():
         )
         
         # Listar módulos disponíveis para filtro
-        modulos = LogAtividadesService.listar_modulos()
+        service = LogAtividadesService()
+        modulos = service.listar_modulos()
         
         current_app.logger.info(f"Log de atividades acessado por {session.get('usuario_nome', 'N/A')}")
         
@@ -82,7 +84,8 @@ def listar_atividades():
 def visualizar_atividade(atividade_id):
     """Visualiza detalhes de uma atividade específica"""
     try:
-        atividade = LogAtividadesService.buscar_atividade(atividade_id)
+        service = LogAtividadesService()
+        atividade = service.buscar_atividade(atividade_id)
         
         if not atividade:
             flash("Atividade não encontrada", "error")
@@ -111,7 +114,8 @@ def limpar_logs():
         if dias < 1:
             return jsonify({'success': False, 'message': 'Número de dias deve ser maior que zero.'})
         
-        sucesso, mensagem, quantidade = LogAtividadesService.limpar_logs_antigos(dias)
+        service = LogAtividadesService()
+        sucesso, mensagem, quantidade = service.limpar_logs_antigos(dias)
         
         if sucesso:
             current_app.logger.info(f"Logs limpos por {session.get('usuario_nome', 'N/A')}: {quantidade} registros")
@@ -127,7 +131,8 @@ def limpar_logs():
 def obter_estatisticas():
     """Obtém estatísticas dos logs de atividades"""
     try:
-        stats = LogAtividadesService.obter_estatisticas()
+        service = LogAtividadesService()
+        stats = service.obter_estatisticas()
         
         current_app.logger.info(f"Estatísticas de log acessadas por {session.get('usuario_nome', 'N/A')}")
         
@@ -148,7 +153,8 @@ def exportar_logs():
         data_fim = request.args.get('data_fim')
         
         # Buscar todas as atividades (sem paginação)
-        resultado = LogAtividadesService.listar_atividades(
+        service = LogAtividadesService()
+        resultado = service.listar_atividades(
             filtro_modulo=filtro_modulo,
             data_inicio=data_inicio,
             data_fim=data_fim,

@@ -6,12 +6,16 @@ from ..models import db, Usuario, LogAtividade
 from flask import current_app, session
 from typing import Dict, List, Tuple, Optional
 import json
+from .repositories import UsuarioRepository
 
 class UsuarioService:
     """Serviço para operações relacionadas a usuários"""
     
-    @staticmethod
-    def criar_usuario(nome: str, senha: str, tipo: str, acessos: Dict[str, bool]) -> Tuple[bool, str, Optional[Usuario]]:
+    def __init__(self):
+        """Inicializa o serviço com seu repository"""
+        self.repository = UsuarioRepository()
+    
+    def criar_usuario(self, nome: str, senha: str, tipo: str, acessos: Dict[str, bool]) -> Tuple[bool, str, Optional[Usuario]]:
         """
         Cria um novo usuário
         
@@ -35,9 +39,8 @@ class UsuarioService:
             if tipo not in ['admin', 'comum']:
                 return False, "Tipo de usuário inválido", None
             
-            # Verificar se já existe usuário com mesmo nome
-            usuario_existente = Usuario.query.filter_by(nome=nome.strip()).first()
-            if usuario_existente:
+            # Verificar se já existe usuário com mesmo nome (usando repository)
+            if self.repository.verificar_nome_existe(nome.strip()):
                 return False, f"Já existe um usuário com o nome '{nome}'", None
             
             # Criar usuário
@@ -55,11 +58,11 @@ class UsuarioService:
             # Definir senha usando hash seguro
             novo_usuario.set_senha(senha.strip())
             
-            db.session.add(novo_usuario)
-            db.session.commit()
+            # Usar repository para criar
+            novo_usuario = self.repository.criar(novo_usuario)
             
             # Registrar atividade
-            UsuarioService._registrar_atividade(
+            self._registrar_atividade(
                 tipo_atividade="Criação de Usuário",
                 titulo="Usuário Criado",
                 descricao=f"Usuário: {nome} - Tipo: {tipo}",
@@ -72,12 +75,10 @@ class UsuarioService:
             return True, "Usuário criado com sucesso", novo_usuario
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao criar usuário: {str(e)}")
             return False, f"Erro ao criar usuário: {str(e)}", None
     
-    @staticmethod
-    def excluir_usuario(usuario_id: int) -> Tuple[bool, str]:
+    def excluir_usuario(self, usuario_id: int) -> Tuple[bool, str]:
         """
         Exclui um usuário
         
@@ -88,22 +89,24 @@ class UsuarioService:
             Tuple[bool, str]: (sucesso, mensagem)
         """
         try:
-            usuario = Usuario.query.get(usuario_id)
+            # Buscar usuário usando repository
+            usuario = self.repository.buscar_por_id(usuario_id)
             if not usuario:
                 return False, "Usuário não encontrado"
             
             # Verificar se não é o último admin
             if usuario.tipo == 'admin':
-                total_admins = Usuario.query.filter_by(tipo='admin').count()
-                if total_admins <= 1:
+                admins = self.repository.listar_por_tipo('admin')
+                if len(admins) <= 1:
                     return False, "Não é possível excluir o último administrador do sistema"
             
             nome_usuario = usuario.nome
-            db.session.delete(usuario)
-            db.session.commit()
+            
+            # Usar repository para excluir
+            self.repository.excluir(usuario)
             
             # Registrar atividade
-            UsuarioService._registrar_atividade(
+            self._registrar_atividade(
                 tipo_atividade="Exclusão de Usuário",
                 titulo="Usuário Excluído",
                 descricao=f"Usuário excluído: {nome_usuario}",
@@ -116,12 +119,10 @@ class UsuarioService:
             return True, "Usuário excluído com sucesso"
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao excluir usuário: {str(e)}")
             return False, f"Erro ao excluir usuário: {str(e)}"
     
-    @staticmethod
-    def listar_usuarios() -> List[Usuario]:
+    def listar_usuarios(self) -> List[Usuario]:
         """
         Lista todos os usuários
         
@@ -129,13 +130,12 @@ class UsuarioService:
             List[Usuario]: Lista de usuários
         """
         try:
-            return Usuario.query.all()
+            return self.repository.listar_todos()
         except Exception as e:
             current_app.logger.error(f"Erro ao listar usuários: {str(e)}")
             return []
     
-    @staticmethod
-    def buscar_usuario(usuario_id: int) -> Optional[Usuario]:
+    def buscar_usuario(self, usuario_id: int) -> Optional[Usuario]:
         """
         Busca um usuário por ID
         
@@ -146,13 +146,12 @@ class UsuarioService:
             Optional[Usuario]: Usuário encontrado ou None
         """
         try:
-            return Usuario.query.get(usuario_id)
+            return self.repository.buscar_por_id(usuario_id)
         except Exception as e:
             current_app.logger.error(f"Erro ao buscar usuário: {str(e)}")
             return None
     
-    @staticmethod
-    def verificar_acesso_admin(usuario_tipo: str) -> bool:
+    def verificar_acesso_admin(self, usuario_tipo: str) -> bool:
         """
         Verifica se o usuário tem acesso de administrador
         
@@ -164,8 +163,7 @@ class UsuarioService:
         """
         return usuario_tipo == 'admin'
     
-    @staticmethod
-    def alterar_senha_usuario(usuario_id: int, senha_atual: str, nova_senha: str, confirmar_senha: str) -> Tuple[bool, str]:
+    def alterar_senha_usuario(self, usuario_id: int, senha_atual: str, nova_senha: str, confirmar_senha: str) -> Tuple[bool, str]:
         """
         Altera a senha de um usuário
         
@@ -190,12 +188,12 @@ class UsuarioService:
                 return False, "Nova senha e confirmação não coincidem"
             
             # Validar política de senha
-            validacao, mensagem = UsuarioService.validar_politica_senha(nova_senha)
+            validacao, mensagem = self.validar_politica_senha(nova_senha)
             if not validacao:
                 return False, mensagem
             
-            # Buscar usuário
-            usuario = Usuario.query.get(usuario_id)
+            # Buscar usuário usando repository
+            usuario = self.repository.buscar_por_id(usuario_id)
             if not usuario:
                 return False, "Usuário não encontrado"
             
@@ -205,10 +203,12 @@ class UsuarioService:
             
             # Alterar senha
             usuario.set_senha(nova_senha.strip())
-            db.session.commit()
+            
+            # Usar repository para atualizar
+            self.repository.atualizar(usuario)
             
             # Registrar atividade
-            UsuarioService._registrar_atividade(
+            self._registrar_atividade(
                 tipo_atividade="Alteração de Senha",
                 titulo="Senha Alterada",
                 descricao=f"Usuário: {usuario.nome} - Senha alterada com sucesso",
@@ -220,12 +220,10 @@ class UsuarioService:
             return True, "Senha alterada com sucesso"
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao alterar senha: {str(e)}")
             return False, f"Erro ao alterar senha: {str(e)}"
     
-    @staticmethod
-    def validar_politica_senha(senha: str) -> Tuple[bool, str]:
+    def validar_politica_senha(self, senha: str) -> Tuple[bool, str]:
         """
         Valida se a senha atende aos critérios de segurança
         
@@ -256,8 +254,7 @@ class UsuarioService:
         
         return True, "Senha válida"
     
-    @staticmethod
-    def editar_usuario(usuario_id: int, nome: str, tipo: str, acessos: Dict[str, bool]) -> Tuple[bool, str]:
+    def editar_usuario(self, usuario_id: int, nome: str, tipo: str, acessos: Dict[str, bool]) -> Tuple[bool, str]:
         """
         Edita um usuário existente
         
@@ -278,14 +275,13 @@ class UsuarioService:
             if tipo not in ['admin', 'comum']:
                 return False, "Tipo de usuário inválido"
             
-            # Buscar usuário
-            usuario = Usuario.query.get(usuario_id)
+            # Buscar usuário usando repository
+            usuario = self.repository.buscar_por_id(usuario_id)
             if not usuario:
                 return False, "Usuário não encontrado"
             
-            # Verificar se nome já existe em outro usuário
-            usuario_existente = Usuario.query.filter_by(nome=nome.strip()).first()
-            if usuario_existente and usuario_existente.id != usuario_id:
+            # Verificar se nome já existe em outro usuário (usando repository)
+            if self.repository.verificar_nome_existe(nome.strip(), excluir_id=usuario_id):
                 return False, f"Já existe um usuário com o nome '{nome}'"
             
             # Atualizar dados
@@ -297,10 +293,11 @@ class UsuarioService:
             usuario.acesso_financeiro = acessos.get('acesso_financeiro', False)
             usuario.acesso_logistica = acessos.get('acesso_logistica', False)
             
-            db.session.commit()
+            # Usar repository para atualizar
+            self.repository.atualizar(usuario)
             
             # Registrar atividade
-            UsuarioService._registrar_atividade(
+            self._registrar_atividade(
                 tipo_atividade="Edição de Usuário",
                 titulo="Usuário Editado",
                 descricao=f"Usuário: {nome} - Tipo: {tipo}",
@@ -312,12 +309,10 @@ class UsuarioService:
             return True, "Usuário editado com sucesso"
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao editar usuário: {str(e)}")
             return False, f"Erro ao editar usuário: {str(e)}"
     
-    @staticmethod
-    def redefinir_senha_usuario(usuario_id: int, nova_senha: str, senha_admin: str) -> Tuple[bool, str]:
+    def redefinir_senha_usuario(self, usuario_id: int, nova_senha: str, senha_admin: str) -> Tuple[bool, str]:
         """
         Redefine a senha de um usuário (apenas para admins)
         
@@ -330,9 +325,13 @@ class UsuarioService:
             Tuple[bool, str]: (sucesso, mensagem)
         """
         try:
-            # Validar senha do admin
-            admin = Usuario.query.filter_by(tipo='admin').first()
-            if not admin or not admin.check_senha(senha_admin):
+            # Validar senha do admin usando repository
+            admins = self.repository.listar_por_tipo('admin')
+            if not admins:
+                return False, "Nenhum administrador encontrado"
+            
+            admin = admins[0]
+            if not admin.check_senha(senha_admin):
                 return False, "Senha do administrador incorreta"
             
             # Validações
@@ -340,21 +339,23 @@ class UsuarioService:
                 return False, "Nova senha é obrigatória"
             
             # Validar política de senha
-            validacao, mensagem = UsuarioService.validar_politica_senha(nova_senha)
+            validacao, mensagem = self.validar_politica_senha(nova_senha)
             if not validacao:
                 return False, mensagem
             
-            # Buscar usuário
-            usuario = Usuario.query.get(usuario_id)
+            # Buscar usuário usando repository
+            usuario = self.repository.buscar_por_id(usuario_id)
             if not usuario:
                 return False, "Usuário não encontrado"
             
             # Redefinir senha
             usuario.set_senha(nova_senha.strip())
-            db.session.commit()
+            
+            # Usar repository para atualizar
+            self.repository.atualizar(usuario)
             
             # Registrar atividade
-            UsuarioService._registrar_atividade(
+            self._registrar_atividade(
                 tipo_atividade="Redefinição de Senha",
                 titulo="Senha Redefinida",
                 descricao=f"Usuário: {usuario.nome} - Senha redefinida por administrador",
@@ -366,12 +367,10 @@ class UsuarioService:
             return True, "Senha redefinida com sucesso"
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao redefinir senha: {str(e)}")
             return False, f"Erro ao redefinir senha: {str(e)}"
     
-    @staticmethod
-    def verificar_senha_admin(senha: str) -> bool:
+    def verificar_senha_admin(self, senha: str) -> bool:
         """
         Verifica se a senha fornecida é do admin
         
@@ -382,14 +381,16 @@ class UsuarioService:
             bool: True se a senha estiver correta
         """
         try:
-            admin = Usuario.query.filter_by(tipo='admin').first()
-            return admin and admin.check_senha(senha)
+            admins = self.repository.listar_por_tipo('admin')
+            if admins:
+                admin = admins[0]
+                return admin.check_senha(senha)
+            return False
         except Exception as e:
             current_app.logger.error(f"Erro ao verificar senha admin: {str(e)}")
             return False
     
-    @staticmethod
-    def autenticar_usuario(nome: str, senha: str) -> Optional[Usuario]:
+    def autenticar_usuario(self, nome: str, senha: str) -> Optional[Usuario]:
         """
         Autentica um usuário
         
@@ -401,7 +402,7 @@ class UsuarioService:
             Optional[Usuario]: Usuário autenticado ou None
         """
         try:
-            usuario = Usuario.query.filter_by(nome=nome).first()
+            usuario = self.repository.buscar_por_nome(nome)
             if usuario and usuario.check_senha(senha):
                 return usuario
             return None
@@ -409,8 +410,7 @@ class UsuarioService:
             current_app.logger.error(f"Erro ao autenticar usuário: {str(e)}")
             return None
     
-    @staticmethod
-    def _registrar_atividade(tipo_atividade: str, titulo: str, descricao: str, modulo: str, dados_extras: Dict = None) -> None:
+    def _registrar_atividade(self, tipo_atividade: str, titulo: str, descricao: str, modulo: str, dados_extras: Dict = None) -> None:
         """
         Registra atividade no log do sistema
         

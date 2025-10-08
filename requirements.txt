@@ -13,6 +13,7 @@ python-dotenv==1.0.1
 validate-docbr==1.11.1
 bleach==6.2.0
 python-magic==0.4.27
+pydantic==2.9.2
 
 # Google Cloud Vision (OCR)
 google-cloud-vision==3.10.2

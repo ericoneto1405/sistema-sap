@@ -8,12 +8,16 @@ import pandas as pd
 from io import BytesIO
 from typing import Dict, Tuple, Optional, Any
 import os
+from .repositories import ProdutoRepository
 
 class ProdutoService:
     """Serviço para operações relacionadas a produtos"""
     
-    @staticmethod
-    def criar_produto(nome: str, categoria: str = 'OUTROS', codigo_interno: Optional[str] = None, ean: Optional[str] = None) -> Tuple[bool, str, Optional[Produto]]:
+    def __init__(self):
+        """Inicializa o serviço com seu repository"""
+        self.repository = ProdutoRepository()
+    
+    def criar_produto(self, nome: str, categoria: str = 'OUTROS', codigo_interno: Optional[str] = None, ean: Optional[str] = None) -> Tuple[bool, str, Optional[Produto]]:
         """
         Cria um novo produto
         
@@ -31,14 +35,13 @@ class ProdutoService:
             if not nome or not nome.strip():
                 return False, "Nome do produto é obrigatório", None
             
-            # Verificar se já existe produto com mesmo nome
-            produto_existente = Produto.query.filter_by(nome=nome.strip()).first()
-            if produto_existente:
+            # Verificar se já existe produto com mesmo nome (usando repository)
+            if self.repository.verificar_nome_existe(nome.strip()):
                 return False, f"Já existe um produto com o nome '{nome}'", None
             
             # Verificar se já existe produto com mesmo código interno
             if codigo_interno and codigo_interno.strip():
-                produto_existente = Produto.query.filter_by(codigo_interno=codigo_interno.strip()).first()
+                produto_existente = self.repository.buscar_por_codigo(codigo_interno.strip())
                 if produto_existente:
                     return False, f"Já existe um produto com o código interno '{codigo_interno}'", None
             
@@ -50,20 +53,18 @@ class ProdutoService:
                 ean=ean.strip() if ean else None
             )
             
-            db.session.add(novo_produto)
-            db.session.commit()
+            # Usar repository para criar
+            novo_produto = self.repository.criar(novo_produto)
             
             current_app.logger.info(f"Produto criado: {novo_produto.nome} (ID: {novo_produto.id})")
             
             return True, "Produto criado com sucesso", novo_produto
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao criar produto: {str(e)}")
             return False, f"Erro ao criar produto: {str(e)}", None
     
-    @staticmethod
-    def atualizar_produto(produto_id: int, nome: str, categoria: str = 'OUTROS', codigo_interno: Optional[str] = None, ean: Optional[str] = None) -> Tuple[bool, str]:
+    def atualizar_produto(self, produto_id: int, nome: str, categoria: str = 'OUTROS', codigo_interno: Optional[str] = None, ean: Optional[str] = None) -> Tuple[bool, str]:
         """
         Atualiza um produto existente
         
@@ -78,7 +79,8 @@ class ProdutoService:
             Tuple[bool, str]: (sucesso, mensagem)
         """
         try:
-            produto = Produto.query.get(produto_id)
+            # Buscar produto usando repository
+            produto = self.repository.buscar_por_id(produto_id)
             if not produto:
                 return False, "Produto não encontrado"
             
@@ -86,21 +88,14 @@ class ProdutoService:
             if not nome or not nome.strip():
                 return False, "Nome do produto é obrigatório"
             
-            # Verificar se já existe outro produto com mesmo nome
-            produto_existente = Produto.query.filter(
-                Produto.nome == nome.strip(),
-                Produto.id != produto_id
-            ).first()
-            if produto_existente:
+            # Verificar se já existe outro produto com mesmo nome (usando repository)
+            if self.repository.verificar_nome_existe(nome.strip(), excluir_id=produto_id):
                 return False, f"Já existe outro produto com o nome '{nome}'"
             
             # Verificar se já existe outro produto com mesmo código interno
             if codigo_interno and codigo_interno.strip():
-                produto_existente = Produto.query.filter(
-                    Produto.codigo_interno == codigo_interno.strip(),
-                    Produto.id != produto_id
-                ).first()
-                if produto_existente:
+                produto_existente = self.repository.buscar_por_codigo(codigo_interno.strip())
+                if produto_existente and produto_existente.id != produto_id:
                     return False, f"Já existe outro produto com o código interno '{codigo_interno}'"
             
             # Atualizar produto
@@ -109,19 +104,18 @@ class ProdutoService:
             produto.codigo_interno = codigo_interno.strip() if codigo_interno else None
             produto.ean = ean.strip() if ean else None
             
-            db.session.commit()
+            # Usar repository para atualizar
+            self.repository.atualizar(produto)
             
             current_app.logger.info(f"Produto atualizado: {produto.nome} (ID: {produto.id})")
             
             return True, "Produto atualizado com sucesso"
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao atualizar produto: {str(e)}")
             return False, f"Erro ao atualizar produto: {str(e)}"
     
-    @staticmethod
-    def excluir_produto(produto_id: int) -> Tuple[bool, str]:
+    def excluir_produto(self, produto_id: int) -> Tuple[bool, str]:
         """
         Exclui um produto e todos os dados relacionados (estoque e movimentações)
         
@@ -132,7 +126,8 @@ class ProdutoService:
             Tuple[bool, str]: (sucesso, mensagem)
         """
         try:
-            produto = Produto.query.get(produto_id)
+            # Buscar produto usando repository
+            produto = self.repository.buscar_por_id(produto_id)
             if not produto:
                 return False, "Produto não encontrado"
             
@@ -148,21 +143,18 @@ class ProdutoService:
             if estoque:
                 db.session.delete(estoque)
             
-            # Excluir o produto
-            db.session.delete(produto)
-            db.session.commit()
+            # Usar repository para excluir o produto
+            self.repository.excluir(produto)
             
             current_app.logger.info(f"Produto excluído: {nome_produto} (ID: {produto_id}) - {len(movimentacoes)} movimentações e 1 estoque removidos")
             
             return True, f"Produto excluído com sucesso! {len(movimentacoes)} movimentações de estoque também foram removidas."
             
         except Exception as e:
-            db.session.rollback()
             current_app.logger.error(f"Erro ao excluir produto: {str(e)}")
             return False, f"Erro ao excluir produto: {str(e)}"
     
-    @staticmethod
-    def atualizar_preco_produto(produto_id: int, preco_medio: float) -> Tuple[bool, str, Optional[float]]:
+    def atualizar_preco_produto(self, produto_id: int, preco_medio: float) -> Tuple[bool, str, Optional[float]]:
         """
         Atualiza o preço médio de compra de um produto
         
@@ -174,7 +166,8 @@ class ProdutoService:
             Tuple[bool, str, Optional[float]]: (sucesso, mensagem, preco_anterior)
         """
         try:
-            produto = Produto.query.get(produto_id)
+            # Buscar produto usando repository
+            produto = self.repository.buscar_por_id(produto_id)
             if not produto:
                 return False, "Produto não encontrado", None
             

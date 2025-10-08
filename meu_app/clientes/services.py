@@ -8,18 +8,31 @@ Autor: Sistema de Gestão Empresarial
 Data: 2024
 """
 
-from ..models import db, Cliente, LogAtividade
-from flask import current_app, session
+from ..models import db, Cliente
+from flask import current_app
 from typing import Dict, List, Tuple, Optional
-import json
-from ..validators import validar_entrada_completa
+from pydantic import ValidationError
+from .repositories import ClienteRepository
+from .schemas import ClienteCreateSchema, ClienteUpdateSchema
 
 
 class ClienteService:
     """Serviço para operações relacionadas a clientes"""
     
+    def __init__(self, repository: Optional[ClienteRepository] = None):
+        """Inicializa o serviço com seu repository"""
+        self.repository = repository or ClienteRepository()
+
     @staticmethod
-    def criar_cliente(nome: str, fantasia: str, telefone: str, endereco: str, cidade: str, cpf_cnpj: str) -> Tuple[bool, str, Optional[Cliente]]:
+    def _format_validation_errors(error: ValidationError) -> str:
+        """Monta string legível das mensagens de validação"""
+        mensagens = []
+        for detalhe in error.errors():
+            campo = ".".join(str(parte) for parte in detalhe.get("loc", ()))
+            mensagens.append(f"{campo}: {detalhe.get('msg')}")
+        return "; ".join(mensagens)
+    
+    def criar_cliente(self, nome: str, fantasia: str, telefone: str, endereco: str, cidade: str, cpf_cnpj: str) -> Tuple[bool, str, Optional[Cliente]]:
         """
         Cria um novo cliente com validação robusta
         
@@ -35,69 +48,52 @@ class ClienteService:
             Tuple[bool, str, Optional[Cliente]]: (sucesso, mensagem, cliente)
         """
         try:
-            # Definir regras de validação
-            regras_validacao = {
-                'nome': {'tipo': 'texto', 'obrigatorio': True, 'max_length': 255},
-                'fantasia': {'tipo': 'texto', 'obrigatorio': False, 'max_length': 255},
-                'telefone': {'tipo': 'telefone', 'obrigatorio': True},
-                'endereco': {'tipo': 'texto', 'obrigatorio': True, 'max_length': 255},
-                'cidade': {'tipo': 'texto', 'obrigatorio': True, 'max_length': 100},
-                'cpf_cnpj': {'tipo': 'cpf_cnpj', 'obrigatorio': False}
-            }
+            try:
+                payload = ClienteCreateSchema(
+                    nome=nome,
+                    fantasia=fantasia,
+                    telefone=telefone,
+                    endereco=endereco,
+                    cidade=cidade,
+                    cpf_cnpj=cpf_cnpj
+                )
+            except ValidationError as exc:
+                mensagem = self._format_validation_errors(exc)
+                return False, f"Erro de validação: {mensagem}", None
+
+            dados = payload.model_dump()
+
+            # Verificar duplicidade de nome usando repository
+            if self.repository.verificar_nome_existe(dados['nome']):
+                return False, f"Já existe um cliente com o nome '{dados['nome']}'", None
             
-            # Preparar dados para validação
-            dados_entrada = {
-                'nome': nome,
-                'fantasia': fantasia,
-                'telefone': telefone,
-                'endereco': endereco,
-                'cidade': cidade,
-                'cpf_cnpj': cpf_cnpj
-            }
-            
-            # Validar entradas
-            valido, dados_sanitizados, erros = validar_entrada_completa(dados_entrada, regras_validacao)
-            
-            if not valido:
-                return False, f"Erro de validação: {'; '.join(erros)}", None
-            
-            # Verificar se já existe cliente com mesmo nome
-            cliente_existente = Cliente.query.filter_by(nome=dados_sanitizados['nome']).first()
-            if cliente_existente:
-                return False, f"Já existe um cliente com o nome '{dados_sanitizados['nome']}'", None
-            
-            # Criar cliente com dados sanitizados
             novo_cliente = Cliente(
-                nome=dados_sanitizados['nome'],
-                fantasia=dados_sanitizados['fantasia'] or None,
-                telefone=dados_sanitizados['telefone'],
-                endereco=dados_sanitizados['endereco'],
-                cidade=dados_sanitizados['cidade'],
-                cpf_cnpj=dados_sanitizados['cpf_cnpj'] or None
+                nome=dados['nome'],
+                fantasia=dados.get('fantasia'),
+                telefone=dados['telefone'],
+                endereco=dados['endereco'],
+                cidade=dados['cidade'],
+                cpf_cnpj=dados.get('cpf_cnpj')
             )
             
-            db.session.add(novo_cliente)
-            db.session.commit()
+            novo_cliente = self.repository.criar(novo_cliente)
             
-            # Registrar atividade
-            ClienteService._registrar_atividade(
+            self._registrar_atividade(
                 'criacao',
                 'Cliente criado',
-                f"Cliente '{dados_sanitizados['nome']}' foi criado",
+                f"Cliente '{dados['nome']}' foi criado",
                 'clientes',
-                {'cliente_id': novo_cliente.id, 'cliente_nome': dados_sanitizados['nome']}
+                {'cliente_id': novo_cliente.id, 'cliente_nome': dados['nome']}
             )
             
-            current_app.logger.info(f"Cliente criado: {dados_sanitizados['nome']} (ID: {novo_cliente.id})")
+            current_app.logger.info(f"Cliente criado: {dados['nome']} (ID: {novo_cliente.id})")
             return True, "Cliente criado com sucesso", novo_cliente
             
         except Exception as e:
             current_app.logger.error(f"Erro ao criar cliente: {str(e)}")
-            db.session.rollback()
             return False, f"Erro ao criar cliente: {str(e)}", None
     
-    @staticmethod
-    def editar_cliente(cliente_id: int, nome: str, fantasia: str, telefone: str, endereco: str, cidade: str, cpf_cnpj: str) -> Tuple[bool, str, Optional[Cliente]]:
+    def editar_cliente(self, cliente_id: int, nome: str, fantasia: str, telefone: str, endereco: str, cidade: str, cpf_cnpj: str) -> Tuple[bool, str, Optional[Cliente]]:
         """
         Edita um cliente existente com validação robusta
         
@@ -114,74 +110,71 @@ class ClienteService:
             Tuple[bool, str, Optional[Cliente]]: (sucesso, mensagem, cliente)
         """
         try:
-            # Buscar cliente
-            cliente = Cliente.query.get(cliente_id)
+            cliente = self.repository.buscar_por_id(cliente_id)
             if not cliente:
                 return False, "Cliente não encontrado", None
             
-            # Definir regras de validação
-            regras_validacao = {
-                'nome': {'tipo': 'texto', 'obrigatorio': True, 'max_length': 255},
-                'fantasia': {'tipo': 'texto', 'obrigatorio': False, 'max_length': 255},
-                'telefone': {'tipo': 'telefone', 'obrigatorio': True},
-                'endereco': {'tipo': 'texto', 'obrigatorio': True, 'max_length': 255},
-                'cidade': {'tipo': 'texto', 'obrigatorio': True, 'max_length': 100},
-                'cpf_cnpj': {'tipo': 'cpf_cnpj', 'obrigatorio': False}
+            try:
+                payload_update = ClienteUpdateSchema(
+                    nome=nome,
+                    fantasia=fantasia,
+                    telefone=telefone,
+                    endereco=endereco,
+                    cidade=cidade,
+                    cpf_cnpj=cpf_cnpj
+                )
+            except ValidationError as exc:
+                mensagem = self._format_validation_errors(exc)
+                return False, f"Erro de validação: {mensagem}", None
+            
+            dados_atualizados = payload_update.model_dump(exclude_unset=True)
+            
+            dados_finais = {
+                'nome': dados_atualizados.get('nome', cliente.nome),
+                'fantasia': dados_atualizados.get('fantasia', cliente.fantasia),
+                'telefone': dados_atualizados.get('telefone', cliente.telefone),
+                'endereco': dados_atualizados.get('endereco', cliente.endereco),
+                'cidade': dados_atualizados.get('cidade', cliente.cidade),
+                'cpf_cnpj': dados_atualizados.get('cpf_cnpj', cliente.cpf_cnpj),
             }
             
-            # Preparar dados para validação
-            dados_entrada = {
-                'nome': nome,
-                'fantasia': fantasia,
-                'telefone': telefone,
-                'endereco': endereco,
-                'cidade': cidade,
-                'cpf_cnpj': cpf_cnpj
-            }
+            # Validar dados finais completos para garantir consistência
+            try:
+                payload_final = ClienteCreateSchema(**dados_finais)
+            except ValidationError as exc:
+                mensagem = self._format_validation_errors(exc)
+                return False, f"Erro de validação: {mensagem}", None
             
-            # Validar entradas
-            valido, dados_sanitizados, erros = validar_entrada_completa(dados_entrada, regras_validacao)
+            dados_validados = payload_final.model_dump()
             
-            if not valido:
-                return False, f"Erro de validação: {'; '.join(erros)}", None
+            if self.repository.verificar_nome_existe(dados_validados['nome'], excluir_id=cliente_id):
+                return False, f"Já existe outro cliente com o nome '{dados_validados['nome']}'", None
             
-            # Verificar se já existe outro cliente com mesmo nome
-            cliente_existente = Cliente.query.filter(
-                Cliente.nome == dados_sanitizados['nome'],
-                Cliente.id != cliente_id
-            ).first()
-            if cliente_existente:
-                return False, f"Já existe outro cliente com o nome '{dados_sanitizados['nome']}'", None
+            cliente.nome = dados_validados['nome']
+            cliente.fantasia = dados_validados.get('fantasia')
+            cliente.telefone = dados_validados['telefone']
+            cliente.endereco = dados_validados['endereco']
+            cliente.cidade = dados_validados['cidade']
+            cliente.cpf_cnpj = dados_validados.get('cpf_cnpj')
             
-            # Atualizar cliente com dados sanitizados
-            cliente.nome = dados_sanitizados['nome']
-            cliente.fantasia = dados_sanitizados['fantasia'] or None
-            cliente.telefone = dados_sanitizados['telefone']
-            cliente.endereco = dados_sanitizados['endereco']
-            cliente.cidade = dados_sanitizados['cidade']
-            cliente.cpf_cnpj = dados_sanitizados['cpf_cnpj'] or None
+            cliente = self.repository.atualizar(cliente)
             
-            db.session.commit()
-            
-            # Registrar atividade
-            ClienteService._registrar_atividade(
+            self._registrar_atividade(
                 'edicao',
                 'Cliente editado',
-                f"Cliente '{dados_sanitizados['nome']}' foi editado",
+                f"Cliente '{dados_validados['nome']}' foi editado",
                 'clientes',
-                {'cliente_id': cliente.id, 'cliente_nome': dados_sanitizados['nome']}
+                {'cliente_id': cliente.id, 'cliente_nome': dados_validados['nome']}
             )
             
-            current_app.logger.info(f"Cliente editado: {dados_sanitizados['nome']} (ID: {cliente.id})")
+            current_app.logger.info(f"Cliente editado: {dados_validados['nome']} (ID: {cliente.id})")
             return True, "Cliente editado com sucesso", cliente
             
         except Exception as e:
             current_app.logger.error(f"Erro ao editar cliente: {str(e)}")
-            db.session.rollback()
             return False, f"Erro ao editar cliente: {str(e)}", None
     
-    @staticmethod
-    def excluir_cliente(cliente_id: int) -> Tuple[bool, str]:
+    def excluir_cliente(self, cliente_id: int) -> Tuple[bool, str]:
         """
         Exclui um cliente
         
@@ -192,7 +185,8 @@ class ClienteService:
             Tuple[bool, str]: (sucesso, mensagem)
         """
         try:
-            cliente = Cliente.query.get(cliente_id)
+            # Buscar cliente usando repository
+            cliente = self.repository.buscar_por_id(cliente_id)
             if not cliente:
                 return False, "Cliente não encontrado"
             
@@ -208,11 +202,11 @@ class ClienteService:
             # (Tabela coleta não foi atualizada no banco de dados)
             # TODO: Ativar após migração do banco de dados
             
-            db.session.delete(cliente)
-            db.session.commit()
+            # Usar repository para excluir
+            self.repository.excluir(cliente)
             
             # Registrar atividade
-            ClienteService._registrar_atividade(
+            self._registrar_atividade(
                 'exclusao',
                 'Cliente excluído',
                 f"Cliente '{nome_cliente}' foi excluído",
@@ -225,11 +219,9 @@ class ClienteService:
             
         except Exception as e:
             current_app.logger.error(f"Erro ao excluir cliente: {str(e)}")
-            db.session.rollback()
             return False, f"Erro ao excluir cliente: {str(e)}"
     
-    @staticmethod
-    def listar_clientes() -> List[Cliente]:
+    def listar_clientes(self) -> List[Cliente]:
         """
         Lista todos os clientes
         
@@ -237,13 +229,12 @@ class ClienteService:
             List[Cliente]: Lista de clientes
         """
         try:
-            return Cliente.query.all()
+            return self.repository.listar_todos()
         except Exception as e:
             current_app.logger.error(f"Erro ao listar clientes: {str(e)}")
             return []
     
-    @staticmethod
-    def buscar_cliente_por_id(cliente_id: int) -> Optional[Cliente]:
+    def buscar_cliente_por_id(self, cliente_id: int) -> Optional[Cliente]:
         """
         Busca um cliente por ID
         
@@ -254,13 +245,12 @@ class ClienteService:
             Optional[Cliente]: Cliente encontrado ou None
         """
         try:
-            return Cliente.query.get(cliente_id)
+            return self.repository.buscar_por_id(cliente_id)
         except Exception as e:
             current_app.logger.error(f"Erro ao buscar cliente: {str(e)}")
             return None
     
-    @staticmethod
-    def buscar_clientes_por_nome(nome: str) -> List[Cliente]:
+    def buscar_clientes_por_nome(self, nome: str) -> List[Cliente]:
         """
         Busca clientes por nome (busca parcial)
         
@@ -271,15 +261,12 @@ class ClienteService:
             List[Cliente]: Lista de clientes encontrados
         """
         try:
-            return Cliente.query.filter(
-                Cliente.nome.ilike(f'%{nome}%')
-            ).all()
+            return self.repository.buscar_por_nome_parcial(nome)
         except Exception as e:
             current_app.logger.error(f"Erro ao buscar clientes por nome: {str(e)}")
             return []
     
-    @staticmethod
-    def _registrar_atividade(tipo_atividade: str, titulo: str, descricao: str, modulo: str, dados_extras: Dict = None) -> None:
+    def _registrar_atividade(self, tipo_atividade: str, titulo: str, descricao: str, modulo: str, dados_extras: Dict = None) -> None:
         """
         Registra atividade no log do sistema
         

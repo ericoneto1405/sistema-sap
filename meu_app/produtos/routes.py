@@ -30,7 +30,8 @@ def novo_produto():
         ean = request.form.get('ean')
         
         # Usar o serviço para criar o produto
-        sucesso, mensagem, produto = ProdutoService.criar_produto(nome, categoria, codigo_interno, ean)
+        service = ProdutoService()
+        sucesso, mensagem, produto = service.criar_produto(nome, categoria, codigo_interno, ean)
         
         if sucesso:
             # Registrar atividade
@@ -67,7 +68,8 @@ def editar_produto(id):
         ean = request.form.get('ean')
         
         # Usar o serviço para atualizar o produto
-        sucesso, mensagem = ProdutoService.atualizar_produto(id, nome, categoria, codigo_interno, ean)
+        service = ProdutoService()
+        sucesso, mensagem = service.atualizar_produto(id, nome, categoria, codigo_interno, ean)
         
         if sucesso:
             current_app.logger.info(f"Produto editado: {produto.nome} por {session.get('usuario_nome', 'N/A')}")
@@ -87,7 +89,8 @@ def excluir_produto(id):
         return redirect(url_for('main.painel'))
     
     # Usar o serviço para excluir o produto
-    sucesso, mensagem = ProdutoService.excluir_produto(id)
+    service = ProdutoService()
+    sucesso, mensagem = service.excluir_produto(id)
     
     if sucesso:
         current_app.logger.info(f"Produto excluído (ID: {id}) por {session.get('usuario_nome', 'N/A')}")
@@ -156,7 +159,8 @@ def atualizar_preco_produto():
             return jsonify({'success': False, 'message': 'Dados incompletos'})
         
         # Usar o serviço para atualizar o preço
-        sucesso, mensagem, preco_anterior = ProdutoService.atualizar_preco_produto(int(produto_id), float(preco_medio))
+        service = ProdutoService()
+        sucesso, mensagem, preco_anterior = service.atualizar_preco_produto(int(produto_id), float(preco_medio))
         
         if sucesso:
             # Registrar atividade
