@@ -63,11 +63,11 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for i, cliente in enumerate(rankings.faturamento, 1) %}
+                                        {% for cliente in rankings.faturamento %}
                                         <tr>
                                             <td>
-                                                <span class="badge badge-{{ 'gold' if i == 1 else 'silver' if i == 2 else 'bronze' if i == 3 else 'secondary' }}">
-                                                    {{ i }}º
+                                                <span class="badge badge-{{ 'gold' if loop.index == 1 else 'silver' if loop.index == 2 else 'bronze' if loop.index == 3 else 'secondary' }}">
+                                                    {{ loop.index }}º
                                                 </span>
                                             </td>
                                             <td>
@@ -109,11 +109,11 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for i, cliente in enumerate(rankings.diversidade, 1) %}
+                                        {% for cliente in rankings.diversidade %}
                                         <tr>
                                             <td>
-                                                <span class="badge badge-{{ 'gold' if i == 1 else 'silver' if i == 2 else 'bronze' if i == 3 else 'secondary' }}">
-                                                    {{ i }}º
+                                                <span class="badge badge-{{ 'gold' if loop.index == 1 else 'silver' if loop.index == 2 else 'bronze' if loop.index == 3 else 'secondary' }}">
+                                                    {{ loop.index }}º
                                                 </span>
                                             </td>
                                             <td>
@@ -155,11 +155,11 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for i, cliente in enumerate(rankings.margem, 1) %}
+                                        {% for cliente in rankings.margem %}
                                         <tr>
                                             <td>
-                                                <span class="badge badge-{{ 'gold' if i == 1 else 'silver' if i == 2 else 'bronze' if i == 3 else 'secondary' }}">
-                                                    {{ i }}º
+                                                <span class="badge badge-{{ 'gold' if loop.index == 1 else 'silver' if loop.index == 2 else 'bronze' if loop.index == 3 else 'secondary' }}">
+                                                    {{ loop.index }}º
                                                 </span>
                                             </td>
                                             <td>
