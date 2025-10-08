@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, current_app, session
 from flask import Blueprint
 from .services import ApuracaoService
+from meu_app.cache import cached_with_invalidation, invalidate_cache
 
 apuracao_bp = Blueprint('apuracao', __name__, url_prefix='/apuracao')
 from functools import wraps
@@ -13,8 +14,18 @@ from app.auth.rbac import requires_financeiro
 @login_obrigatorio
 @requires_financeiro
 @permissao_necessaria('acesso_financeiro')
+@cached_with_invalidation(
+    timeout=600,  # 10 minutos
+    key_prefix='apuracao_lista',
+    invalidate_on=['apuracao.criada', 'apuracao.atualizada', 'pedido.criado', 'pagamento.aprovado']
+)
 def listar_apuracao():
-    """Lista apurações"""
+    """
+    Lista apurações com cache
+    
+    Cache: 10 minutos (cálculos pesados)
+    Invalidação: apuração, pedidos e pagamentos atualizados
+    """
     try:
         # Filtros de mês e ano
         mes = request.args.get('mes', datetime.now().month, type=int)

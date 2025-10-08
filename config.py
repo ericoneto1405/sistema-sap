@@ -45,9 +45,10 @@ class BaseConfig:
     WTF_CSRF_TIME_LIMIT = None
     WTF_CSRF_SSL_STRICT = False
     
-    # Cache
-    CACHE_TYPE = 'SimpleCache'
-    CACHE_DEFAULT_TIMEOUT = 300
+    # Cache (FASE 8)
+    CACHE_TYPE = 'SimpleCache'  # SimpleCache para dev, Redis para prod
+    CACHE_DEFAULT_TIMEOUT = 300  # 5 minutos
+    CACHE_KEY_PREFIX = 'flask_cache_'
     
     # Rate Limiting
     RATELIMIT_ENABLED = True
@@ -115,9 +116,14 @@ class ProductionConfig(BaseConfig):
         'frame-ancestors': ["'none'"],
     }
     
-    # Cache Redis
-    CACHE_TYPE = os.getenv('CACHE_TYPE', 'SimpleCache')
-    CACHE_REDIS_URL = os.getenv('REDIS_URL')
+    # Cache Redis (FASE 8)
+    CACHE_TYPE = 'redis' if os.getenv('REDIS_URL') else 'SimpleCache'
+    CACHE_REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    CACHE_OPTIONS = {
+        'socket_connect_timeout': 2,
+        'socket_timeout': 2,
+        'connection_pool_kwargs': {'max_connections': 50}
+    }
     
     # Rate Limiting com Redis
     RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')

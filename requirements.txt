@@ -37,3 +37,7 @@ alembic==1.13.1
 # Observabilidade e Métricas (FASE 6)
 python-json-logger==2.0.7
 prometheus-client==0.20.0
+
+# Cache e Performance (FASE 8)
+# Redis já está instalado (usado em Flask-Limiter)
+# Flask-Caching já está instalado

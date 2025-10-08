@@ -1,6 +1,7 @@
 from flask import render_template, request, jsonify
 from meu_app.decorators import login_obrigatorio, permissao_necessaria
 from app.auth.rbac import requires_vendedor
+from meu_app.cache import cached_with_invalidation
 from . import vendedor_bp
 from .services import VendedorService
 
@@ -8,9 +9,17 @@ from .services import VendedorService
 @login_obrigatorio
 @requires_vendedor
 @permissao_necessaria('acesso_clientes')
+@cached_with_invalidation(
+    timeout=600,  # 10 minutos
+    key_prefix='vendedor_dashboard',
+    invalidate_on=['pedido.criado', 'pedido.atualizado', 'cliente.atualizado']
+)
 def dashboard():
     """
     TELA 1: Visão de Atividade dos Clientes
+    
+    Cache: 10 minutos
+    Invalidação: pedidos e clientes atualizados
     """
     clientes_por_atividade = VendedorService.get_clientes_por_atividade()
     
@@ -20,9 +29,17 @@ def dashboard():
 @vendedor_bp.route('/cliente/<int:cliente_id>')
 @login_obrigatorio
 @permissao_necessaria('acesso_clientes')
+@cached_with_invalidation(
+    timeout=300,  # 5 minutos
+    key_prefix='cliente_detalhes',
+    invalidate_on=['pedido.criado', 'pedido.atualizado', 'cliente.atualizado']
+)
 def detalhes_cliente(cliente_id):
     """
     TELA 2: Detalhes do Cliente
+    
+    Cache: 5 minutos (queries pesadas com joins)
+    Invalidação: pedidos e clientes atualizados
     """
     detalhes = VendedorService.get_detalhes_cliente(cliente_id)
     
@@ -32,9 +49,17 @@ def detalhes_cliente(cliente_id):
 @vendedor_bp.route('/rankings')
 @login_obrigatorio
 @permissao_necessaria('acesso_clientes')
+@cached_with_invalidation(
+    timeout=900,  # 15 minutos
+    key_prefix='vendedor_rankings',
+    invalidate_on=['pedido.criado', 'pedido.atualizado']
+)
 def rankings():
     """
     TELA 3: Rankings
+    
+    Cache: 15 minutos (análise pesada)
+    Invalidação: pedidos atualizados
     """
     periodo = request.args.get('periodo', 'todos')
     rankings_data = VendedorService.get_rankings(periodo)
