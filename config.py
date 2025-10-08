@@ -96,8 +96,11 @@ class DevelopmentConfig(BaseConfig):
         ],
         "img-src": ["'self'", "data:", "https:"],
         "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net", "https://fonts.gstatic.com"],
-        "connect-src": ["'self'"],
+        "connect-src": ["'self'", "https://cdn.jsdelivr.net"],  # Permite source maps
     }
+    
+    # Desabilitar nonce em desenvolvimento para permitir unsafe-inline funcionar
+    CSP_NONCE_SOURCES = []  # Vazio = sem nonce, unsafe-inline funciona
 
 
 class TestingConfig(BaseConfig):
