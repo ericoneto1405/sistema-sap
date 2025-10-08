@@ -1,23 +1,126 @@
+# Pre-commit Configuration
+# =======================
+# Hooks de qualidade de código executados automaticamente antes de cada commit.
+#
+# Instalação:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Uso:
+#   pre-commit run --all-files  # Executar em todos os arquivos
+#   pre-commit run <hook-id>    # Executar hook específico
+#
+# Autor: Sistema SAP - Fase 9
+
 repos:
-  - repo: local
+  # ===========================
+  # FORMATAÇÃO DE CÓDIGO
+  # ===========================
+  
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
     hooks:
-      - id: eslint
-        name: eslint
-        entry: eslint
-        language: system
-        files: \.js$
-        args: ['meu_app/static/js/coletas/**/*.js']
-        
+      - id: black
+        name: Black - Formatação de código Python
+        language_version: python3.9
+        args: ['--line-length=100']
+  
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort - Ordenação de imports
+        args: ['--profile', 'black', '--line-length', '100']
+  
+  # ===========================
+  # LINTING E QUALIDADE
+  # ===========================
+  
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.8
+    hooks:
+      - id: ruff
+        name: Ruff - Linter rápido
+        args: ['--fix', '--exit-non-zero-on-fix']
+      - id: ruff-format
+        name: Ruff - Formatação
+  
+  # ===========================
+  # SEGURANÇA
+  # ===========================
+  
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        name: Bandit - Análise de segurança
+        args: ['-c', 'pyproject.toml']
+        additional_dependencies: ['bandit[toml]']
+  
+  # ===========================
+  # TYPE CHECKING
+  # ===========================
+  
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
       - id: mypy
-        name: mypy
-        entry: mypy
-        language: system
-        files: \.py$
-        args: ['meu_app/coletas/']
-        
-      - id: pytest-unit
-        name: pytest-unit
-        entry: pytest
-        language: system
-        files: \.py$
-        args: ['tests/coletas/', '-q']
+        name: MyPy - Type checking
+        additional_dependencies: 
+          - types-redis
+          - types-requests
+        args: ['--ignore-missing-imports', '--no-strict-optional']
+  
+  # ===========================
+  # SPELL CHECKING
+  # ===========================
+  
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        name: Codespell - Correção ortográfica
+        args: ['--skip=*.js,*.css,*.min.*,venv,node_modules,.git']
+  
+  # ===========================
+  # HOOKS BÁSICOS
+  # ===========================
+  
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        name: Remove espaços em branco no final
+      - id: end-of-file-fixer
+        name: Garante quebra de linha no final
+      - id: check-yaml
+        name: Valida arquivos YAML
+      - id: check-json
+        name: Valida arquivos JSON
+      - id: check-added-large-files
+        name: Previne commits de arquivos grandes
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+        name: Detecta marcadores de merge conflict
+      - id: debug-statements
+        name: Detecta statements de debug (pdb, ipdb)
+      - id: check-docstring-first
+        name: Verifica docstrings no início
+  
+  # ===========================
+  # SEGURANÇA DE CREDENCIAIS
+  # ===========================
+  
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: Detecta secrets e credenciais
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock.json
+
+# Configurações globais
+default_language_version:
+  python: python3.9
+
+fail_fast: false

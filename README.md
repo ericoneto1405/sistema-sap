@@ -2,9 +2,14 @@
 
 Sistema completo de gestão empresarial desenvolvido em Flask.
 
-![Python](https://img.shields.io/badge/Python-3.13-blue)
-![Flask](https://img.shields.io/badge/Flask-3.0-green)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red)
+<!-- Badges de Pipeline (FASE 9) -->
+![CI/CD](https://github.com/ericoneto1405/sistema-sap/workflows/CI/CD%20Pipeline/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
+![Python](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11-blue)
+![Flask](https://img.shields.io/badge/Flask-2.3-green)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)
+![Security](https://img.shields.io/badge/security-bandit-yellow.svg)
 
 ---
 

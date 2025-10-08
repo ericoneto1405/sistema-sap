@@ -260,12 +260,12 @@ class VisionOcrService:
         Encontra o valor monetário mais provável em uma string de texto,
         dando prioridade a palavras-chave específicas.
         """
-        text = text.upper()
+        text = text.upper().replace('\u00A0', ' ').replace('\t', ' ')
         
         # Padrões prioritários para valores
         priority_patterns = [
-            r'(?:VALOR\s+DA\s+TRANSFER.NCIA|VALOR\s+DO\s+PAGAMENTO|VALOR\s+DO\s+PIX|TOTAL\s+GERAL|VALOR\s+L.QUIDO|VALOR\s+A\s+TRANSFERIR)[\s\S]{0,100}?R?\$\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})',
-            r'(?:TRANSFERIDO|PAGO|VALOR)[\s\S]{0,50}?R?\$\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})'
+            r'(?:VALOR\s+DA\s+TRANSFER.NCIA|VALOR\s+DO\s+PAGAMENTO|VALOR\s+DO\s+PIX|TOTAL\s+GERAL|VALOR\s+L.QUIDO|VALOR\s+A\s+TRANSFERIR)[\s\S]{0,120}?R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})',
+            r'(?:TRANSFERIDO|PAGO|VALOR|TOTAL)[\s\S]{0,80}?R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})'
         ]
         
         for pattern in priority_patterns:
@@ -279,7 +279,7 @@ class VisionOcrService:
 
         # Padrões secundários
         secondary_patterns = [
-            r'(?:TOTAL|VALOR\s+A\s+PAGAR|VALOR\s+TOTAL)\s*[:\-]?\s*R?\$\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})'
+            r'(?:TOTAL|VALOR\s+A\s+PAGAR|VALOR\s+TOTAL|VALOR\s+PAGO|TOTAL\s+PAGO)\s*[:\-]?\s*R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})'
         ]
         
         found_values = []
@@ -295,7 +295,7 @@ class VisionOcrService:
             return max(found_values)
 
         # Fallback: qualquer valor monetário
-        fallback_pattern = r'R\$\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})'
+        fallback_pattern = r'R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})'
         matches = re.findall(fallback_pattern, text)
         found_values = []
         for match in matches:
@@ -312,6 +312,7 @@ class VisionOcrService:
     @staticmethod
     def _parse_currency_value(value_str: str) -> float:
         """Converte string de valor monetário para float"""
+        value_str = value_str.replace(' ', '')
         if '.' in value_str and ',' in value_str:
             if value_str.rfind('.') > value_str.rfind(','):
                 # Formato americano: 1,234.56

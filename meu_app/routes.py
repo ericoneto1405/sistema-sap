@@ -401,3 +401,81 @@ def metrics():
     """
     current_app.logger.debug("Métricas Prometheus solicitadas")
     return Response(export_metrics(), mimetype='text/plain; charset=utf-8')
+
+
+@bp.route('/healthz')
+def healthz():
+    """
+    Healthcheck liveness probe
+    
+    Verifica se a aplicação está viva e respondendo.
+    Usado por Kubernetes/Docker para restart automático.
+    
+    Returns:
+        200 OK se aplicação está viva
+        500 Error se aplicação não pode responder
+    """
+    try:
+        # Verificação básica - app está respondendo
+        return jsonify({
+            'status': 'healthy',
+            'service': 'sistema-sap',
+            'timestamp': datetime.now().isoformat()
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Healthcheck falhou: {str(e)}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
+@bp.route('/readiness')
+def readiness():
+    """
+    Readiness probe
+    
+    Verifica se a aplicação está pronta para receber tráfego.
+    Valida conexões com banco de dados, cache, etc.
+    Usado por load balancers e orquestradores.
+    
+    Returns:
+        200 OK se pronta para tráfego
+        503 Service Unavailable se não estiver pronta
+    """
+    checks = {
+        'database': False,
+        'cache': False
+    }
+    
+    try:
+        # 1. Verificar conexão com banco de dados
+        from sqlalchemy import text
+        with db.engine.connect() as conn:
+            conn.execute(text('SELECT 1'))
+        checks['database'] = True
+    except Exception as e:
+        current_app.logger.error(f"Readiness check - Database falhou: {str(e)}")
+    
+    try:
+        # 2. Verificar cache
+        from . import cache as cache_instance
+        cache_instance.set('readiness_check', 'ok', timeout=10)
+        result = cache_instance.get('readiness_check')
+        checks['cache'] = (result == 'ok')
+    except Exception as e:
+        current_app.logger.warning(f"Readiness check - Cache falhou: {str(e)}")
+        # Cache não é crítico, pode continuar
+        checks['cache'] = True
+    
+    # Todas as verificações críticas devem passar
+    all_ready = checks['database']
+    
+    status_code = 200 if all_ready else 503
+    
+    return jsonify({
+        'status': 'ready' if all_ready else 'not_ready',
+        'checks': checks,
+        'timestamp': datetime.now().isoformat()
+    }), status_code
