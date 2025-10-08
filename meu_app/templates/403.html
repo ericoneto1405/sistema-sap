@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Acesso Negado - 403{% endblock %}
+
+{% block page_title %}Acesso Negado{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 50px auto; text-align: center;">
+    <div style="font-size: 72px; margin-bottom: 20px;">🔒</div>
+    
+    <h2 style="color: #d32f2f; margin-bottom: 20px;">Acesso Negado</h2>
+    
+    <p style="font-size: 18px; margin-bottom: 30px;">
+        Você não tem permissão para acessar esta funcionalidade.
+    </p>
+    
+    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #ffc107;">
+        <p style="margin: 0; color: #856404;">
+            <strong>🔑 Permissão Necessária:</strong><br>
+            Esta página requer permissões de acesso específicas.
+        </p>
+    </div>
+    
+    <p style="color: #666; margin-bottom: 30px;">
+        Se você acredita que deveria ter acesso a esta área, entre em contato com o administrador do sistema.
+    </p>
+    
+    <div style="display: flex; gap: 15px; justify-content: center;">
+        <a href="{{ url_for('main.painel') }}" class="btn btn-primary">
+            🏠 Voltar ao Painel
+        </a>
+        
+        <a href="javascript:history.back()" class="btn btn-secondary">
+            ← Voltar
+        </a>
+    </div>
+    
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px;">
+        <p>Código: HTTP 403 Forbidden</p>
+        <p>Se precisar de ajuda, contacte: <strong>admin@sistema-sap.com</strong></p>
+    </div>
+</div>
+
+<style>
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 6px;
+        display: inline-block;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #5a6268;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}

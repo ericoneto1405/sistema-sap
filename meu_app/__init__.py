@@ -20,19 +20,18 @@ from flask_caching import Cache
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 
-from app.security import csrf, init_security, limiter
+from .security import csrf, limiter, setup_security
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
 # Inicializar extensões (sem app ainda)
 db = SQLAlchemy()
-csrf = csrf  # Re-exportar para compatibilidade
 cache = Cache()
 login_manager = LoginManager()
 
 
-def create_app(config_class):
+def create_app(config_class=None):
     """
     Função fábrica para criar a aplicação Flask
     
@@ -45,6 +44,9 @@ def create_app(config_class):
     app = Flask(__name__)
     
     # Carregar configuração
+    if config_class is None:
+        from config import get_config
+        config_class = get_config()
     app.config.from_object(config_class)
     
     # Inicializar extensões
@@ -91,8 +93,7 @@ def initialize_extensions(app):
     # Database
     db.init_app(app)
     
-    # CSRF Protection (via app.security)
-    # csrf já foi inicializado em app.security, apenas garantir
+    # CSRF Protection (via meu_app.security)
     
     # LoginManager
     login_manager.init_app(app)
@@ -110,7 +111,7 @@ def initialize_extensions(app):
     cache.init_app(app)
     
     # Segurança (CSRF, Limiter, Talisman)
-    init_security(app)
+    setup_security(app)
 
 
 def setup_logging(app):
@@ -194,15 +195,20 @@ def register_error_handlers(app):
     
     @app.errorhandler(403)
     def forbidden_error(error):
-        """Manipulador para erros 403"""
+        """Manipulador para erros 403 (acesso negado)"""
         app.logger.warning(f'Acesso negado: {request.url} - IP: {request.remote_addr}')
         
-        return jsonify({
-            'error': True,
-            'message': 'Acesso negado',
-            'type': 'Forbidden',
-            'timestamp': datetime.now().isoformat()
-        }), 403
+        # Se for JSON/API, retornar JSON
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.path.startswith('/api/'):
+            return jsonify({
+                'error': True,
+                'message': 'Acesso negado. Você não tem permissão para acessar este recurso.',
+                'type': 'Forbidden',
+                'timestamp': datetime.now().isoformat()
+            }), 403
+        
+        # Retornar template 403 amigável
+        return render_template('403.html'), 403
     
     @app.errorhandler(429)
     def ratelimit_handler(e):
