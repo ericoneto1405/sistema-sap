@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request, render_template
 from flask_caching import Cache
 from flask_login import LoginManager
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
 from .security import csrf, limiter, setup_security
@@ -27,6 +28,7 @@ load_dotenv()
 
 # Inicializar extensões (sem app ainda)
 db = SQLAlchemy()
+migrate = Migrate()
 cache = Cache()
 login_manager = LoginManager()
 
@@ -84,6 +86,7 @@ def initialize_extensions(app):
     
     Extensões registradas:
     - DB (SQLAlchemy)
+    - Migrate (Flask-Migrate/Alembic)
     - CSRF (Flask-WTF)
     - LoginManager (Flask-Login)
     - Cache (Flask-Caching)
@@ -92,6 +95,9 @@ def initialize_extensions(app):
     """
     # Database
     db.init_app(app)
+    
+    # Migrations (Alembic via Flask-Migrate)
+    migrate.init_app(app, db)
     
     # CSRF Protection (via meu_app.security)
     

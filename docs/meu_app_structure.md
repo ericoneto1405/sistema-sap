@@ -4,7 +4,7 @@ Este documento existe para contornar um problema intermitente no viewer web do G
 
 ## Visão geral (até 2 níveis)
 
-````tree
+```text
 meu_app
 ├── __init__.py
 ├── apuracao
@@ -61,7 +61,7 @@ meu_app
     ├── routes.py
     ├── schemas.py
     └── services.py
-````
+```
 
 ## Como gerar a árvore localmente
 
@@ -76,5 +76,6 @@ tree -L 2 meu_app
 - Cada domínio (`clientes`, `pedidos`, `produtos`, etc.) possui pares `repositories.py`, `schemas.py` (quando necessário) e `services.py`, mantendo regra de negócio fora das views.
 - Os módulos `routes.py` de cada domínio expõem apenas endpoints e delegam lógica para camadas de serviço ou repositório.
 - Serviços compartilhados (por exemplo, `decorators.py`, `validators.py`, `upload_security.py`) permanecem na raiz para evitar dependências cíclicas entre domínios.
+- O módulo `coletas` mantém múltiplas implementações sob `services/` (`coleta_service.py`, histórico, etc.) para organizar fluxos específicos sem poluir as views.
 
 Com esses detalhes é possível auditar a organização da pasta sem depender do carregamento do diretório pelo viewer do GitHub.

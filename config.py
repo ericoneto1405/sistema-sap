@@ -22,7 +22,8 @@ class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-key-insecure-change-me")
     
     # Banco de dados
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'sistema.db')}")
+    # SQLite requer /// para caminho relativo ou //// para caminho absoluto
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", f"sqlite:///{os.path.abspath(os.path.join(BASE_DIR, 'instance', 'sistema.db'))}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
     

@@ -29,3 +29,7 @@ gunicorn==23.0.0
 
 # FIX CRÍTICO - LoginManager
 Flask-Login==0.6.3
+
+# Migrations (FASE 5)
+Flask-Migrate==4.0.7
+alembic==1.13.1
