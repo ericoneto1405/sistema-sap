@@ -133,6 +133,8 @@ sistema-sap/
 └── instance/            # Dados (não versionado)
 ```
 
+> Caso o viewer do GitHub não carregue o diretório `meu_app/`, consulte a árvore resumida em [`docs/meu_app_structure.md`](docs/meu_app_structure.md).
+
 ---
 
 ## 🛠 Tecnologias
