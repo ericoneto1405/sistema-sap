@@ -7,9 +7,11 @@ from functools import wraps
 from datetime import datetime
 from ..models import Apuracao, db
 from ..decorators import login_obrigatorio, permissao_necessaria
+from app.auth.rbac import requires_financeiro
 
 @apuracao_bp.route('/', methods=['GET'])
 @login_obrigatorio
+@requires_financeiro
 @permissao_necessaria('acesso_financeiro')
 def listar_apuracao():
     """Lista apurações"""

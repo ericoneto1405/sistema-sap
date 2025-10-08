@@ -79,33 +79,31 @@ gunicorn -w 4 -b 127.0.0.1:8000 --access-logfile - --error-logfile - wsgi:app
 
 ## 🔑 Credenciais (Apenas DEV/Seed)
 
-### **Para Desenvolvimento Local**
+### Desenvolvimento local
 
-O script `init_db.py` pode criar um usuário administrador de teste:
+O script `init_db.py` respeita as variáveis de ambiente `INITIAL_ADMIN_USERNAME`
+e `INITIAL_ADMIN_PASSWORD`. Configure **apenas** em ambientes de teste:
 
 ```bash
-# Opção 1: Usuário de seed para DEV (APENAS TESTES LOCAIS)
-export ADMIN_USERNAME=admin
-export ADMIN_PASSWORD=admin123
+export INITIAL_ADMIN_USERNAME=admin
+export INITIAL_ADMIN_PASSWORD=admin123
 python init_db.py
 ```
 
-⚠️ **ATENÇÃO:**
-- Estas credenciais são **APENAS para desenvolvimento local**
-- **NUNCA** use `admin:admin123` em produção
-- **NUNCA** commite estas credenciais
-- Troque imediatamente após criar
+⚠️ **ATENÇÃO**
+- Use estas credenciais apenas para desenvolvimento local.
+- Remova as variáveis após a seed para evitar vazamentos.
+- Troque a senha no primeiro acesso.
 
-### **Para Produção**
+### Produção
 
 ```bash
-# Gerar senha forte aleatória
-export ADMIN_USERNAME="admin_producao"
-export ADMIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+export INITIAL_ADMIN_USERNAME="admin_producao"
+export INITIAL_ADMIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 python init_db.py
-
-# Anote as credenciais em gerenciador de senhas (LastPass, 1Password, etc.)
 ```
+
+Armazene as credenciais em um cofre (1Password, Vault, etc.) e force troca periódica.
 
 ---
 
@@ -119,6 +117,7 @@ sistema-sap/
 ├── .env.example         # Template de variáveis
 ├── meu_app/             # Aplicação principal
 │   ├── __init__.py      # App Factory
+│   ├── security.py      # CSRF, rate limit, headers
 │   ├── clientes/        # Módulo de clientes
 │   ├── produtos/        # Módulo de produtos
 │   ├── pedidos/         # Módulo de pedidos
@@ -127,8 +126,8 @@ sistema-sap/
 │   ├── apuracao/        # Apuração mensal
 │   ├── coletas/         # Coletas e logística
 │   └── ...
-├── app/                 # Utilitários compartilhados
-│   └── security.py      # CSRF, Rate Limiting, Talisman
+├── scripts/             # Scripts utilitários
+│   └── phase2_smoke.sh  # Smoke test da Fase 2
 ├── docs/                # Documentação completa
 ├── tests/               # Testes automatizados
 └── instance/            # Dados (não versionado)
@@ -145,6 +144,32 @@ sistema-sap/
 - **APIs:** Google Cloud Vision (OCR)
 - **PDF:** ReportLab
 - **WSGI:** Gunicorn
+
+---
+
+## 🔐 Segurança Base (Fase 2)
+
+A aplicação implementa os controles mínimos de endurecimento definidos na Fase 2:
+
+- **CSRF global** com Flask-WTF/CSRFProtect (exceções podem ser aplicadas via `csrf.exempt`).
+- **Headers seguros** via Flask-Talisman: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, CSP com nonce automático e HSTS habilitado apenas em produção.
+- **Cookies de sessão protegidos** (`HttpOnly`, `SameSite=Lax`, `Secure` em produção) com expiração padrão de 8h.
+- **Rate limiting** com Flask-Limiter: `/login` limitado a **10 requisições/minuto por IP** e limite padrão de 200/hora para rotas sensíveis.
+
+> Em DEV/TESTE o redirecionamento HTTPS/HSTS fica desativado automaticamente.
+> Caso precise ajustar manualmente, utilize as flags `TALISMAN_FORCE_HTTPS=False`
+> e `TALISMAN_STRICT_TRANSPORT_SECURITY=False` nas variáveis de ambiente.
+
+### Smoke test da Fase 2
+
+Após iniciar o servidor em desenvolvimento (`python run.py`), execute:
+
+```bash
+bash scripts/phase2_smoke.sh http://127.0.0.1:5004
+```
+
+O script valida CSRF, headers obrigatórios, flags de cookie e o rate limit do login.
 
 ---
 

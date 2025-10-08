@@ -17,6 +17,7 @@
 
     <div class="form-container">
         <form method="POST" class="apuracao-form" id="apuracaoForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Período -->
             <div class="form-section">
                 <h3>Período</h3>
@@ -331,8 +332,7 @@
 }
 
 </style>
-
-<script>
+<script nonce="{{ nonce }}">
 function calcularResultados() {
     const receita = parseFloat(document.getElementById('receita').value) || 0;
     const cpv = parseFloat(document.getElementById('cpv').value) || 0;

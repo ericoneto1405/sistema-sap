@@ -9,6 +9,7 @@
     <h2>{% if produto %}✏️ Editar Produto{% else %}➕ Novo Produto{% endif %}</h2>
     
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label for="nome">Nome</label>
             <input type="text" id="nome" name="nome" value="{{ produto.nome if produto else '' }}" required>
@@ -116,6 +117,7 @@
     <div class="card">
         <h1>{% if produto %}✏️ Editar Produto{% else %}➕ Novo Produto{% endif %}</h1>
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label>Nome</label>
             <input type="text" name="nome" value="{{ produto.nome if produto else '' }}" required>
 
@@ -133,4 +135,3 @@
 
 </body>
 </html>
-

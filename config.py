@@ -51,7 +51,7 @@ class BaseConfig:
     # Rate Limiting
     RATELIMIT_ENABLED = True
     RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')
-    RATELIMIT_DEFAULT = "200 per day;50 per hour"
+    RATELIMIT_DEFAULT = "200 per hour"
     
     # Security Headers
     SECURITY_HEADERS_ENABLED = False
@@ -68,7 +68,7 @@ class DevelopmentConfig(BaseConfig):
     DEBUG = True
     SESSION_COOKIE_SECURE = False
     LOG_LEVEL = 'DEBUG'
-    RATELIMIT_DEFAULT = "1000 per day;200 per hour"
+    RATELIMIT_DEFAULT = "500 per hour"
 
 
 class TestingConfig(BaseConfig):
@@ -104,11 +104,13 @@ class ProductionConfig(BaseConfig):
     SECURITY_HEADERS_ENABLED = True
     CSP_DIRECTIVES = {
         'default-src': ["'self'"],
-        'script-src': ["'self'", "'unsafe-inline'"],
+        'script-src': ["'self'"],
         'style-src': ["'self'", "'unsafe-inline'"],
-        'img-src': ["'self'", 'data:', 'https:'],
+        'img-src': ["'self'", 'data:'],
         'font-src': ["'self'", 'data:'],
         'connect-src': ["'self'"],
+        'object-src': ["'none'"],
+        'base-uri': ["'self'"],
         'frame-ancestors': ["'none'"],
     }
     

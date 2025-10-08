@@ -4,6 +4,7 @@ Integra funcionalidades do módulo logística
 """
 from flask import Blueprint, render_template, current_app, flash, request, redirect, url_for, session, send_file, jsonify
 from ..decorators import login_obrigatorio, permissao_necessaria
+from app.auth.rbac import requires_logistica
 import json
 import traceback
 from datetime import datetime
@@ -16,6 +17,7 @@ import os
 
 @coletas_bp.route('/')
 @login_obrigatorio
+@requires_logistica
 @permissao_necessaria('acesso_logistica')
 def index():
     """Lista pedidos para coleta - interface simples e direta"""

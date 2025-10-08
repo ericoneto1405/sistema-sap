@@ -4,11 +4,13 @@ usuarios_bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
 from .services import UsuarioService
 from functools import wraps
 from ..decorators import login_obrigatorio, permissao_necessaria, admin_necessario
+from app.auth.rbac import requires_admin
 
 # Decoradores movidos para meu_app/decorators.py
 
 @usuarios_bp.route('/', methods=['GET', 'POST'])
 @login_obrigatorio
+@requires_admin
 @admin_necessario
 def listar_usuarios():
     """Lista e cria usuários"""

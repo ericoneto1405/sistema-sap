@@ -19,6 +19,7 @@
 <div class="content-section">
     <div class="form-container">
         <form method="POST" class="form-card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="produto_id">Descrição (Produto)</label>
                 <select name="produto_id" id="produto_id" class="form-control" required>
@@ -142,7 +143,7 @@
 </style>
 
 {% block scripts %}
-<script>
+<script nonce="{{ nonce }}">
 $(document).ready(function() {
     // Inicializar Select2 para melhor experiência
     $('#produto_id').select2({

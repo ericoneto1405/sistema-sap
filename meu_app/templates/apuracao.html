@@ -163,6 +163,7 @@
                     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes_selecionado or 8] }} de {{ ano_selecionado or 2025 }}</h3>
                 
                 <form method="POST" class="calculation-form" id="formPrevisao">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="mes" value="{{ mes_selecionado or 8 }}">
                     <input type="hidden" name="ano" value="{{ ano_selecionado or 2025 }}">
                     <input type="hidden" name="tipo" value="previsao">
@@ -223,6 +224,7 @@
                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes_selecionado or 8] }} de {{ ano_selecionado or 2025 }}</h3>
             
             <form method="POST" class="calculation-form" id="formApuração">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="mes" value="{{ mes_selecionado or 8 }}">
                 <input type="hidden" name="ano" value="{{ ano_selecionado or 2025 }}">
                 <input type="hidden" name="tipo" value="apuracao">
@@ -367,6 +369,7 @@
                 Para salvar como definitivo, é necessário inserir a senha do administrador.
             </p>
             <form id="formSenha">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="senhaAdmin">Senha do Administrador:</label>
                     <input type="password" id="senhaAdmin" name="senha" required>
@@ -1030,7 +1033,7 @@
 
 </style>
 
-<script>
+<script nonce="{{ nonce }}">
 // Controle de Abas
 document.addEventListener('DOMContentLoaded', function() {
     const tabBtns = document.querySelectorAll('.tab-btn');
@@ -1148,6 +1151,12 @@ function salvarPrevisao() {
     formData.append('mes', '{{ mes_selecionado or 8 }}');
     formData.append('ano', '{{ ano_selecionado or 2025 }}');
     
+    const form = document.getElementById('formPrevisao');
+    const csrfTokenInput = form ? form.querySelector('input[name="csrf_token"]') : null;
+    if (csrfTokenInput) {
+        formData.append('csrf_token', csrfTokenInput.value);
+    }
+
     // Mostrar loading
     const btnSalvar = document.querySelector('#formPrevisao .btn-save');
     const originalText = btnSalvar.innerHTML;
@@ -1391,6 +1400,12 @@ function salvarApuração() {
     formData.append('verba_outras_receitas', document.getElementById('verba_outras_receitas').value);
     formData.append('outros_custos', document.getElementById('outros_custos').value);
     
+    const apuracaoForm = document.getElementById('formApuração');
+    const csrfTokenInput = apuracaoForm ? apuracaoForm.querySelector('input[name="csrf_token"]') : null;
+    if (csrfTokenInput) {
+        formData.append('csrf_token', csrfTokenInput.value);
+    }
+
     // Se for uma apuração existente, salvar via AJAX
     {% if apuracao_existente %}
     fetch('/apuracao/salvar/{{ apuracao_existente.id }}', {
@@ -1463,6 +1478,8 @@ function confirmarAcao() {
     const errorMessage = document.getElementById('errorMessage');
     const loading = document.getElementById('loading');
     const btnConfirmar = document.getElementById('btnConfirmar');
+    const csrfTokenInput = document.querySelector('#formSenha input[name="csrf_token"]');
+    const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
     
     if (!senha) {
         errorMessage.textContent = 'Por favor, insira a senha.';
@@ -1482,6 +1499,9 @@ function confirmarAcao() {
     formData.append('verba_time_ambev', document.getElementById('verba_time_ambev').value);
     formData.append('verba_outras_receitas', document.getElementById('verba_outras_receitas').value);
     formData.append('outros_custos', document.getElementById('outros_custos').value);
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
     
     let url = '';
     {% if apuracao_existente %}

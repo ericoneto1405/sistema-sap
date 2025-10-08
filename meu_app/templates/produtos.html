@@ -599,7 +599,7 @@ table tbody tr:hover {
 }
 </style>
 
-<script>
+<script nonce="{{ nonce }}">
 // Sistema de Abas
 document.addEventListener('DOMContentLoaded', function() {
     const tabBtns = document.querySelectorAll('.tab-btn');
@@ -625,9 +625,15 @@ function uploadPlanilha(input) {
         const file = input.files[0];
         const formData = new FormData();
         formData.append('file', file);
+        const csrfToken = window.CSRF_TOKEN || '';
+        if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+        }
+        const headers = csrfToken ? {'X-CSRFToken': csrfToken} : {};
 
         fetch('/produtos/upload', {
             method: 'POST',
+            headers,
             body: formData
         })
         .then(response => response.json())
@@ -659,9 +665,15 @@ function uploadPrecos(input) {
         const file = input.files[0];
         const formData = new FormData();
         formData.append('file', file);
+        const csrfToken = window.CSRF_TOKEN || '';
+        if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+        }
+        const headers = csrfToken ? {'X-CSRFToken': csrfToken} : {};
 
         fetch('/produtos/upload_precos', {
             method: 'POST',
+            headers,
             body: formData
         })
         .then(response => response.json())
@@ -725,9 +737,15 @@ function salvarPrecoManual() {
     const formData = new FormData();
     formData.append('produto_id', produtoId);
     formData.append('preco_medio', precoMedio);
+    const csrfToken = window.CSRF_TOKEN || '';
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
+    const headers = csrfToken ? {'X-CSRFToken': csrfToken} : {};
     
     fetch('/produtos/atualizar_preco', {
         method: 'POST',
+        headers,
         body: formData
     })
     .then(response => response.json())

@@ -5,6 +5,7 @@ financeiro_bp = Blueprint('financeiro', __name__, url_prefix='/financeiro')
 from .services import FinanceiroService
 from functools import wraps
 from ..decorators import login_obrigatorio, permissao_necessaria, admin_necessario
+from app.auth.rbac import requires_financeiro
 from ..upload_security import FileUploadValidator
 from .ocr_service import OcrService
 from .config import FinanceiroConfig
@@ -21,6 +22,7 @@ from .exceptions import (
 # Decorador login_obrigatorio movido para meu_app/decorators.py
 @financeiro_bp.route('/', methods=['GET'])
 @login_obrigatorio
+@requires_financeiro
 @permissao_necessaria('acesso_financeiro')
 def listar_financeiro():
     """Lista dados financeiros"""

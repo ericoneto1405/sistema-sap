@@ -1,0 +1,48 @@
+feat: Implementar Flask App Factory pattern + configuração por ambiente
+
+FASE 1 - Migração Completa para App Factory
+
+Arquivos Criados:
+- config.py: Configurações por ambiente (Dev/Test/Prod)
+- wsgi.py: Entry point para produção (Gunicorn/uWSGI)
+- .env.example: Template de variáveis de ambiente
+- MIGRACAO_APP_FACTORY.md: Documentação da migração
+- RELATORIO_DISCOVERY.md: Análise de segurança
+
+Arquivos Modificados:
+- meu_app/__init__.py: Migrado para App Factory pattern
+  - Registra db, csrf, cache, limiter, talisman
+  - Registro de 11 blueprints
+  - Error handlers e custom filters
+- run.py: Atualizado para desenvolvimento apenas
+- requirements.txt: Novas dependências adicionadas
+- README.md: Documentado como iniciar (dev/prod)
+
+Melhorias de Segurança:
+- SECRET_KEY obrigatória (runtime error se ausente)
+- CSRF Protection implementado
+- Rate Limiting configurado
+- Security Headers via Talisman (prod)
+- Debug mode controlado por ambiente
+- Configurações de sessão por ambiente
+
+Novas Dependências:
+- Flask-WTF (CSRF protection)
+- Flask-Caching (sistema de cache)
+- Flask-Limiter (rate limiting)
+- Flask-Talisman (security headers)
+- redis (backend para cache)
+- gunicorn (servidor WSGI)
+
+Breaking Changes:
+- SECRET_KEY agora é OBRIGATÓRIA
+- Necessário criar arquivo .env antes de executar
+- Em produção, DATABASE_URL deve ser PostgreSQL/MySQL
+
+Testes:
+- ✅ App inicializa corretamente
+- ✅ 11 blueprints registrados
+- ✅ Extensões funcionando
+- ✅ Logging operacional
+
+Resolves: Riscos C1, C3, M4, A1, A2 do RELATORIO_DISCOVERY.md

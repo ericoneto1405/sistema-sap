@@ -85,6 +85,7 @@
     <p><strong>Saldo Restante:</strong> R$ {{ '%.2f' % (saldo if saldo > 0 else 0) }}</p>
 
     <form method="POST" id="form-pagamento" data-total="{{ total }}" data-pago="{{ pago }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="valor">Valor a Pagar:</label>
         <input type="text" id="valor" name="valor" inputmode="decimal" step="0.01" required>
 
@@ -118,7 +119,7 @@
 
     <div id="ocr-status" style="display: none; margin-top: 15px; font-weight: bold;"></div>
 
-    <script>
+    <script nonce="{{ nonce }}">
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('form-pagamento');
             const reciboInput = document.getElementById('recibo');
@@ -168,6 +169,10 @@
 
                 const formData = new FormData();
                 formData.append('recibo', file);
+                const csrfTokenInput = document.querySelector('#form-pagamento input[name="csrf_token"]');
+                if (csrfTokenInput) {
+                    formData.append('csrf_token', csrfTokenInput.value);
+                }
 
                 fetch('{{ url_for("financeiro.processar_recibo_ocr") }}', {
                     method: 'POST',

@@ -9,6 +9,7 @@
 <body>
     <div class="login-container">
         <form method="POST" class="login-card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <img src="{{ url_for('static', filename='images/logo_gerpedplus.png') }}" alt="Logo" class="logo">
             <h2>Login</h2>
             

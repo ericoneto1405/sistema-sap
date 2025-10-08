@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block page_title %}Erro de Segurança{% endblock %}
+
+{% block content %}
+<div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading">Requisição bloqueada</h4>
+    <p>{{ message }}</p>
+    <hr>
+    <p class="mb-0">Para continuar, atualize a página e tente novamente.</p>
+</div>
+{% endblock %}

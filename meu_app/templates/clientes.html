@@ -131,7 +131,7 @@
     }
 </style>
 
-<script>
+<script nonce="{{ nonce }}">
     // Lógica para controlar o modal
     document.addEventListener('DOMContentLoaded', (event) => {
         var modal = document.getElementById("errorModal");
@@ -190,6 +190,7 @@
                         </svg>
                     </a>
                     <form method="POST" action="{{ url_for('clientes.excluir_cliente', id=cliente.id) }}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="icon-btn icon-delete" title="Excluir cliente">
                             <svg class="icon-svg" viewBox="0 0 24 24">
                                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>

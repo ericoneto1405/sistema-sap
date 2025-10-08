@@ -224,11 +224,11 @@
 </div>
 
 <!-- Scripts do Dashboard -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+<script nonce="{{ nonce }}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script nonce="{{ nonce }}" src="{{ url_for('static', filename='dashboard.js') }}"></script>
 
 <!-- Dados para o JavaScript -->
-<script>
+<script nonce="{{ nonce }}">
     // Dados do dashboard para o JavaScript
     window.dadosEvolucao = {{ dados_evolucao | tojson | safe }};
     window.margemManobra = {{ margem_manobra }};

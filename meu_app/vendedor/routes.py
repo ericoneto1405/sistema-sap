@@ -1,10 +1,12 @@
 from flask import render_template, request, jsonify
 from meu_app.decorators import login_obrigatorio, permissao_necessaria
+from app.auth.rbac import requires_vendedor
 from . import vendedor_bp
 from .services import VendedorService
 
 @vendedor_bp.route('/')
 @login_obrigatorio
+@requires_vendedor
 @permissao_necessaria('acesso_clientes')
 def dashboard():
     """

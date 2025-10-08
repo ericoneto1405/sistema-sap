@@ -21,6 +21,7 @@
     {% endwith %}
     
     <form method="POST" id="form-cliente">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group mb-3">
             <label for="nome" class="form-label">
                 Nome <span class="text-danger">*</span>
@@ -133,7 +134,7 @@
 }
 </style>
 
-<script>
+<script nonce="{{ nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('form-cliente');
     const btnSalvar = document.getElementById('btn-salvar');

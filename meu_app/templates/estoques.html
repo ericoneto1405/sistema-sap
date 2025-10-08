@@ -129,7 +129,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ nonce }}">
 $(document).ready(function() {
     // Inicializar tooltips
     $('[title]').tooltip();

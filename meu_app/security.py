@@ -115,9 +115,6 @@ def _configure_rate_limiting(app) -> None:
 def _configure_talisman(app) -> None:
     """Aplica os headers de segurança via Flask-Talisman."""
     global _talisman  # pylint: disable=global-statement
-    
-    if not app.config.get("SECURITY_HEADERS_ENABLED"):
-        return
 
     csp = app.config.get("CSP_DIRECTIVES") or DEFAULT_CSP
     nonce_directives = app.config.get("CSP_NONCE_SOURCES", ["script-src"])

@@ -7,6 +7,7 @@ from sqlalchemy import func
 from functools import wraps
 import shutil
 from .decorators import login_obrigatorio, permissao_necessaria, admin_necessario
+from .security import limiter
 
 # Criar blueprint
 bp = Blueprint('main', __name__)
@@ -60,6 +61,10 @@ def favicon():
 
 
 @bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit(
+    lambda: current_app.config.get('LOGIN_RATE_LIMIT', '10 per minute'),
+    methods=['POST']
+)
 def login():
     if request.method == 'POST':
         nome = request.form['usuario']

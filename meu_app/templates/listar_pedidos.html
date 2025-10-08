@@ -439,6 +439,7 @@
                 Para continuar com esta ação, é necessário inserir a senha do administrador.
             </p>
             <form id="formSenha">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="senhaAdmin">Senha do Administrador:</label>
                     <input type="password" id="senhaAdmin" name="senha" required>
@@ -459,7 +460,7 @@
 
 <a href="{{ url_for('main.painel') }}" class="botao">⬅ Voltar ao Painel</a>
 
-<script>
+<script nonce="{{ nonce }}">
 let acaoAtual = '';
 let pedidoId = null;
 
@@ -510,6 +511,8 @@ function confirmarAcao() {
     const errorMessage = document.getElementById('errorMessage');
     const loading = document.getElementById('loading');
     const btnConfirmar = document.getElementById('btnConfirmar');
+    const csrfTokenInput = document.querySelector('#formSenha input[name="csrf_token"]');
+    const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
     
     if (!senha) {
         errorMessage.textContent = 'Por favor, insira a senha.';
@@ -531,12 +534,20 @@ function confirmarAcao() {
         url = `/pedidos/confirmar_comercial/${pedidoId}`;
     }
     
+    const payload = new URLSearchParams({
+        senha: senha,
+    });
+    if (csrfToken) {
+        payload.append('csrf_token', csrfToken);
+    }
+
     fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            ...(csrfToken ? {'X-CSRFToken': csrfToken} : {}),
         },
-        body: `senha=${encodeURIComponent(senha)}`
+        body: payload,
     })
     .then(response => response.json())
     .then(data => {

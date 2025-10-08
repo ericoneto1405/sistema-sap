@@ -9,6 +9,7 @@
     <h2>👥 Gerenciar Usuários</h2>
     
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label for="nome">Nome do Usuário</label>
             <input type="text" id="nome" name="nome" required>
@@ -137,6 +138,7 @@
             <span class="close" onclick="fecharModal('modalEditarUsuario')">&times;</span>
         </div>
         <form id="formEditarUsuario" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="modal-body">
                 <div class="form-group">
                     <label for="editNome">Nome do Usuário</label>
@@ -193,6 +195,7 @@
             <span class="close" onclick="fecharModal('modalAlterarSenha')">&times;</span>
         </div>
         <form id="formAlterarSenha" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="modal-body">
                 <div class="form-group">
                     <label for="senhaAtual">Senha Atual</label>
@@ -226,6 +229,7 @@
             <span class="close" onclick="fecharModal('modalRedefinirSenha')">&times;</span>
         </div>
         <form id="formRedefinirSenha" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="modal-body">
                 <div class="alert alert-info">
                     <strong>⚠️ Aviso:</strong> Esta ação redefinirá a senha do usuário. 
@@ -374,7 +378,7 @@
 }
 </style>
 
-<script>
+<script nonce="{{ nonce }}">
 let usuarioIdAtual = null;
 
 function abrirModalEditarUsuario(id, nome, tipo, acessos) {
@@ -434,4 +438,3 @@ window.onclick = function(event) {
 </script>
 
 {% endblock %}
-
