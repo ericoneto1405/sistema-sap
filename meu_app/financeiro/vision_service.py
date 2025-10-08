@@ -603,49 +603,33 @@ class VisionOcrService:
         pontos = 0
         checks = 0
         
-        # Check 1: Chave PIX (mais confiável)
+        # Check 1: Chave PIX (50 pontos - mais confiável)
         if bank_info.get('chave_pix_recebedor'):
             checks += 1
             chave_lower = bank_info['chave_pix_recebedor'].lower()
             pix_esperado_lower = recebedor_esperado['pix'].lower()
             
             if chave_lower == pix_esperado_lower:
-                pontos += 40
+                pontos += 50
                 validacao['motivo'].append(f"✅ Chave PIX correta: {bank_info['chave_pix_recebedor']}")
             else:
                 validacao['motivo'].append(f"⚠️ Chave PIX diferente: {bank_info['chave_pix_recebedor']} (esperado: {recebedor_esperado['pix']})")
         
-        # Check 2: CNPJ do recebedor
+        # Check 2: CNPJ do recebedor (50 pontos - mais confiável)
         if bank_info.get('cnpj_recebedor'):
             checks += 1
             cnpj_limpo = re.sub(r'[^\d]', '', bank_info['cnpj_recebedor'])
             cnpj_esperado = recebedor_esperado['cnpj']
             
             if cnpj_limpo == cnpj_esperado:
-                pontos += 40
+                pontos += 50
                 validacao['motivo'].append(f"✅ CNPJ correto: {bank_info.get('cpf_cnpj_recebedor', cnpj_limpo)}")
             else:
                 validacao['motivo'].append(f"⚠️ CNPJ diferente: {bank_info.get('cpf_cnpj_recebedor')} (esperado: {recebedor_esperado['cnpj_formatado']})")
         
-        # Check 3: Nome do recebedor (menos confiável - variações de OCR)
-        if bank_info.get('nome_recebedor'):
-            checks += 1
-            nome_upper = bank_info['nome_recebedor'].upper()
-            nome_esperado_upper = recebedor_esperado['nome'].upper()
-            
-            # Buscar palavras-chave
-            palavras_chave = ['SERTAO', 'GRUPO']
-            encontrou = any(palavra in nome_upper for palavra in palavras_chave)
-            
-            if encontrou or nome_esperado_upper in nome_upper:
-                pontos += 20
-                validacao['motivo'].append(f"✅ Nome recebedor compatível: {bank_info['nome_recebedor']}")
-            else:
-                validacao['motivo'].append(f"⚠️ Nome recebedor diferente: {bank_info['nome_recebedor']} (esperado: {recebedor_esperado['nome']})")
-        
-        # Calcular confiança
+        # Calcular confiança (PIX + CNPJ = 100 pontos possíveis)
         if checks > 0:
-            validacao['confianca'] = int((pontos / (checks * 40)) * 100)  # Normalizar para 100%
+            validacao['confianca'] = int((pontos / (checks * 50)) * 100)  # Normalizar para 100%
         
         # Considerar válido se confiança >= 50%
         validacao['valido'] = validacao['confianca'] >= 50
