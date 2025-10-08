@@ -8,16 +8,22 @@
 <div class="card" style="max-width: 600px; margin: 0 auto;">
     <h2>{% if produto %}✏️ Editar Produto{% else %}➕ Novo Produto{% endif %}</h2>
     
-    <form method="POST">
+    <form method="POST" id="formProduto">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
         <div class="form-group">
-            <label for="nome">Nome</label>
-            <input type="text" id="nome" name="nome" value="{{ produto.nome if produto else '' }}" required>
+            <label for="nome">Nome *</label>
+            <input type="text" 
+                   id="nome" 
+                   name="nome" 
+                   value="{{ produto.nome if produto else '' }}" 
+                   required 
+                   class="form-control">
         </div>
 
         <div class="form-group">
-            <label for="categoria">Categoria</label>
-            <select id="categoria" name="categoria" required>
+            <label for="categoria">Categoria *</label>
+            <select id="categoria" name="categoria" required class="form-control">
                 <option value="">Selecione uma categoria</option>
                 <option value="CERVEJA" {% if produto and produto.categoria == 'CERVEJA' %}selected{% endif %}>CERVEJA</option>
                 <option value="NAB" {% if produto and produto.categoria == 'NAB' %}selected{% endif %}>NAB</option>
@@ -27,111 +33,50 @@
 
         <div class="form-group">
             <label for="codigo_interno">Código Interno</label>
-            <input type="text" id="codigo_interno" name="codigo_interno" value="{{ produto.codigo_interno if produto else '' }}">
+            <input type="text" 
+                   id="codigo_interno" 
+                   name="codigo_interno" 
+                   value="{{ produto.codigo_interno if produto else '' }}"
+                   class="form-control">
         </div>
 
         <div class="form-group">
-            <label for="ean">EAN</label>
-            <input type="text" id="ean" name="ean" value="{{ produto.ean if produto else '' }}">
+            <label for="ean">EAN/Código de Barras</label>
+            <input type="text" 
+                   id="ean" 
+                   name="ean" 
+                   value="{{ produto.ean if produto else '' }}"
+                   class="form-control"
+                   placeholder="Ex: 7891234567890">
         </div>
 
-        <div class="d-flex gap-2 justify-content-between">
+        <div class="d-flex gap-2 justify-content-between mt-4">
             <a href="{{ url_for('produtos.listar_produtos') }}" class="btn btn-secondary">⬅ Voltar</a>
-            <button type="submit" class="btn btn-success">💾 Salvar Produto</button>
+            <button type="submit" class="btn btn-success" id="btnSalvar">
+                💾 Salvar Produto
+            </button>
         </div>
     </form>
 </div>
+
+<script>
+// Prevenir double-submit
+document.getElementById('formProduto').addEventListener('submit', function(e) {
+    const btnSalvar = document.getElementById('btnSalvar');
+    if (btnSalvar.disabled) {
+        e.preventDefault();
+        return false;
+    }
+    
+    // Desabilitar botão após submit
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '⏳ Salvando...';
+    
+    // Re-habilitar após 3 segundos (caso haja erro e página não redirecione)
+    setTimeout(function() {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = '💾 Salvar Produto';
+    }, 3000);
+});
+</script>
 {% endblock %}
-            border-radius: 10px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.06);
-            max-width: 500px;
-            width: 100%;
-            animation: fadeIn 0.5s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        h1 {
-            color: var(--primaria);
-            font-size: 24px;
-            margin-bottom: 25px;
-            text-align: center;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: bold;
-            color: var(--texto);
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--borda);
-            border-radius: 5px;
-            margin-bottom: 20px;
-            transition: border-color 0.2s;
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--secundaria);
-            outline: none;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(to right, var(--primaria), var(--secundaria));
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.3s ease-in-out;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .voltar {
-            display: block;
-            text-align: center;
-            margin-top: 20px;
-            color: var(--primaria);
-            font-weight: bold;
-            text-decoration: none;
-        }
-
-        .voltar:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="card">
-        <h1>{% if produto %}✏️ Editar Produto{% else %}➕ Novo Produto{% endif %}</h1>
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label>Nome</label>
-            <input type="text" name="nome" value="{{ produto.nome if produto else '' }}" required>
-
-            <label>Código Interno</label>
-            <input type="text" name="codigo_interno" value="{{ produto.codigo_interno if produto else '' }}" required>
-
-            <label>EAN</label>
-            <input type="text" name="ean" value="{{ produto.ean if produto else '' }}">
-
-            <button type="submit">💾 Salvar Produto</button>
-        </form>
-
-        <a class="voltar" href="{{ url_for('produtos.listar_produtos') }}">⬅ Voltar para a lista de produtos</a>
-    </div>
-
-</body>
-</html>
