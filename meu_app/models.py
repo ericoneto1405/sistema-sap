@@ -13,7 +13,7 @@ class Cliente(db.Model):
     cidade = db.Column(db.String(100))
     cpf_cnpj = db.Column(db.String(20))
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
-    telefone = db.Column(db.String(20))  # <-- ESTE AQUI
+    telefone = db.Column(db.String(20))
 
 class Produto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
