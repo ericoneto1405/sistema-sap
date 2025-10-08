@@ -330,25 +330,87 @@ class VisionOcrService:
     def _find_transaction_id_in_text(text: str) -> Optional[str]:
         """
         Encontra um ID de transação em uma string de texto.
+        Suporta múltiplos padrões de bancos brasileiros.
         """
-        text = text.upper()
+        import unicodedata
         
-        # Padrões para ID de transação
-        patterns = [
-            r'(?:ID\s+DA\s+TRANSA(?:ÇÃO|CAO)|ID\s+TRANSACAO|ID\s+PAGAMENTO|CODIGO\s+DA\s+OPERACAO|N\.\s+DOCUMENTO|NOSSO\s+NUMERO)\s*[:\-]?\s*([a-zA-Z0-9]{10,40})\b',
-            r'(?:TRANSACAO|OPERACAO|PAGAMENTO)\s*[:\-]?\s*([a-zA-Z0-9]{10,40})\b'
+        # Debug: mostrar texto recebido
+        print(f"[DEBUG OCR] Buscando ID no texto (primeiros 200 chars): {text[:200]}")
+        
+        # Normalizar texto removendo acentos para facilitar regex
+        def remove_accents(input_str):
+            nfkd = unicodedata.normalize('NFKD', input_str)
+            return ''.join([c for c in nfkd if not unicodedata.combining(c)])
+        
+        text_normalized = remove_accents(text).upper()
+        print(f"[DEBUG OCR] Texto normalizado (primeiros 200 chars): {text_normalized[:200]}")
+        
+        # Padrão 1: Labels explícitos (prioridade alta)
+        # IMPORTANTE: Aceitar IDs numéricos OU alfanuméricos (mínimo 8 chars)
+        explicit_patterns = [
+            # Mercado Pago e similares - "Número da transação" (numérico OU alfanumérico)
+            r'(?:NUMERO\s+DA\s+TRANSACAO|NUMERO\s+TRANSACAO)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            
+            # PIX - Diversos formatos
+            r'(?:ID\s+DA\s+TRANSACAO|ID\s+TRANSACAO|IDENTIFICACAO)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            r'(?:CODIGO\s+DA\s+TRANSACAO|CODIGO\s+TRANSACAO)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            
+            # Termos comuns
+            r'(?:ID\s+PAGAMENTO|PAGAMENTO\s+ID|ID\s+PIX)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            r'(?:CODIGO\s+DA\s+OPERACAO|COD\.\s+OPERACAO|OPERACAO)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            r'(?:NUMERO\s+DA\s+OPERACAO|N\.\s+OPERACAO)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            r'(?:N\.\s+DOCUMENTO|NUMERO\s+DOCUMENTO|DOCUMENTO)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            r'(?:NOSSO\s+NUMERO|NOSSO\s+NUM)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            r'(?:PROTOCOLO|AUTENTICACAO)\s*[:\-]?\s*([a-zA-Z0-9]{8,50})',
+            r'(?:COMPROVACAO|COMPROVANTE)\s*[:\-]?\s*([a-zA-Z0-9]{15,50})',
+            
+            # Nubank/Inter (UUID-like)
+            r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})',
         ]
         
-        for pattern in patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+        for i, pattern in enumerate(explicit_patterns, 1):
+            matches = re.findall(pattern, text_normalized, re.IGNORECASE)
             if matches:
-                return matches[0]
-            
-        # Fallback: IDs PIX (inicia com E ou D)
-        fallback_pattern = r'\b([ED][a-zA-Z0-9]{20,})\b'
-        matches = re.findall(fallback_pattern, text)
+                print(f"[DEBUG OCR] Padrão {i} encontrou: {matches}")
+                candidate = matches[0].strip()
+                # Validar que não é data ou valor monetário
+                if not re.match(r'^\d{1,2}[/\-\.]\d{1,2}', candidate):
+                    # Validar tamanho mínimo razoável (8+ chars)
+                    if len(candidate) >= 8:
+                        print(f"[DEBUG OCR] ✅ ID da Transação extraído: {candidate}")
+                        return candidate
+                    else:
+                        print(f"[DEBUG OCR] ⚠️ Candidato muito curto: {candidate} ({len(candidate)} chars)")
+                else:
+                    print(f"[DEBUG OCR] ⚠️ Candidato parece ser data: {candidate}")
+        
+        # Padrão 2: IDs PIX padrão brasileiro (começam com E ou D)
+        # Formato: E00000000202510021939023026977590 (32+ caracteres)
+        pix_pattern = r'\b([ED][0-9]{25,40})\b'
+        matches = re.findall(pix_pattern, text_upper)
         if matches:
-            return matches[0]
+            # Retornar o mais longo (geralmente mais completo)
+            return max(matches, key=len)
+        
+        # Padrão 3: Sequências alfanuméricas longas (15-50 chars)
+        # Após palavras-chave relacionadas a transação
+        context_pattern = r'(?:TRANSA(?:ÇÃO|CAO)|PAGAMENTO|PIX|TRANSFER[EÊ]NCIA)\s*[:\-]?\s*([A-Z0-9]{15,50})'
+        matches = re.findall(context_pattern, text_upper)
+        if matches:
+            return matches[0].strip()
+        
+        # Padrão 4: Busca genérica por códigos longos
+        # Evitar datas (com /) e valores (com , ou R$)
+        generic_pattern = r'\b([A-Z0-9]{20,50})\b'
+        matches = re.findall(generic_pattern, text_upper)
+        if matches:
+            # Filtrar candidatos válidos
+            for candidate in matches:
+                # Não pode ser só números (pode ser CPF, telefone, etc)
+                if not candidate.isdigit():
+                    # Não pode ter padrão de data
+                    if not re.search(r'\d{2}[/\-\.]\d{2}', candidate):
+                        return candidate
 
         return None
 
@@ -457,11 +519,20 @@ class VisionOcrService:
                     'error': 'Não foi possível extrair texto do documento.'
                 }
 
+            print(f"[DEBUG] Texto extraído ({len(text)} chars), iniciando busca de dados...")
+            
             # Extrair todos os dados
             amount = cls._find_amount_in_text(text)
+            print(f"[DEBUG] Valor encontrado: {amount}")
+            
             transaction_id = cls._find_transaction_id_in_text(text)
+            print(f"[DEBUG] ID Transação após busca: {transaction_id}")
+            
             date = cls._find_date_in_text(text)
+            print(f"[DEBUG] Data encontrada: {date}")
+            
             bank_info = cls._find_bank_info_in_text(text)
+            print(f"[DEBUG] Bank info: {bank_info}")
 
             return {
                 'amount': amount,
