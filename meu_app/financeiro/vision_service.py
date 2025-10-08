@@ -429,14 +429,18 @@ class VisionOcrService:
     def _find_bank_info_in_text(text: str) -> Dict[str, Optional[str]]:
         """
         Encontra informações bancárias no texto.
+        Inclui dados do RECEBEDOR (para validação) e dados do PAGADOR.
         """
-        text = text.upper()
+        text_upper = text.upper()
         
         result = {
             'banco_emitente': None,
             'agencia_recebedor': None,
             'conta_recebedor': None,
-            'chave_pix_recebedor': None
+            'chave_pix_recebedor': None,
+            'nome_recebedor': None,      # NOVO: Nome de quem recebeu
+            'cnpj_recebedor': None,       # NOVO: CNPJ de quem recebeu
+            'cpf_cnpj_recebedor': None    # NOVO: CPF ou CNPJ formatado
         }
         
         # Padrões para banco emitente
@@ -477,10 +481,8 @@ class VisionOcrService:
         
         # Padrões para chave PIX
         pix_patterns = [
-            r'(?:CHAVE\s+PIX|PIX)\s*[:\-]?\s*([a-zA-Z0-9@\.\-]{20,})',
+            r'(?:CHAVE\s+PIX|PIX)\s*[:\-]?\s*([a-zA-Z0-9@\.\-]{10,})',
             r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',  # Email
-            r'(\d{11})',  # CPF
-            r'(\d{14})',  # CNPJ
             r'(\+55\s?\d{2}\s?\d{4,5}\s?\d{4})'  # Telefone
         ]
         
@@ -490,7 +492,115 @@ class VisionOcrService:
                 result['chave_pix_recebedor'] = matches[0]
                 break
         
+        # NOVO: Extrair CNPJ do recebedor (quem recebeu o pagamento)
+        # Formatos: 30080209000416, 30.080.209/0004-16, 30.080.209/004-16
+        cnpj_patterns = [
+            r'(?:PARA|RECEBEDOR|FAVORECIDO|BENEFICIARIO)[\s\S]{0,100}?CNPJ\s*[:\-]?\s*([\d\./-]{14,20})',
+            r'CNPJ\s*[:\-]?\s*([\d\./-]{14,20})',  # CNPJ genérico
+            r'(\d{2}\.?\d{3}\.?\d{3}[\/\-]?\d{4}[\/\-]?\d{2})',  # Formato brasileiro
+            r'(\d{14})',  # 14 dígitos seguidos
+        ]
+        
+        for pattern in cnpj_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                cnpj_encontrado = matches[0].strip()
+                # Limpar formatação
+                cnpj_limpo = re.sub(r'[^\d]', '', cnpj_encontrado)
+                if len(cnpj_limpo) == 14:
+                    result['cnpj_recebedor'] = cnpj_limpo
+                    result['cpf_cnpj_recebedor'] = cnpj_encontrado  # Com formatação
+                    break
+        
+        # NOVO: Extrair nome do recebedor
+        # Procurar após palavras-chave "Para:", "Recebedor:", "Favorecido:", "Beneficiário:"
+        nome_patterns = [
+            r'(?:PARA|RECEBEDOR|FAVORECIDO|BENEFICIARIO)\s*[:\-]?\s*([A-Z][A-Z\s&]{3,50})',
+            r'(?:DESTINATARIO|DESTINO)\s*[:\-]?\s*([A-Z][A-Z\s&]{3,50})',
+        ]
+        
+        for pattern in nome_patterns:
+            matches = re.findall(pattern, text_upper, re.IGNORECASE)
+            if matches:
+                nome = matches[0].strip()
+                # Limpar espaços extras
+                nome = ' '.join(nome.split())
+                if len(nome) >= 3:  # Nome mínimo razoável
+                    result['nome_recebedor'] = nome
+                    break
+        
         return result
+    
+    @staticmethod
+    def _validar_recebedor(bank_info: Dict, recebedor_esperado: Dict) -> Dict:
+        """
+        Valida se o recebedor do pagamento é o esperado (Grupo Sertão).
+        
+        Returns:
+            Dict com 'valido', 'motivo', 'confianca'
+        """
+        validacao = {
+            'valido': False,
+            'motivo': [],
+            'confianca': 0  # 0-100%
+        }
+        
+        pontos = 0
+        checks = 0
+        
+        # Check 1: Chave PIX (mais confiável)
+        if bank_info.get('chave_pix_recebedor'):
+            checks += 1
+            chave_lower = bank_info['chave_pix_recebedor'].lower()
+            pix_esperado_lower = recebedor_esperado['pix'].lower()
+            
+            if chave_lower == pix_esperado_lower:
+                pontos += 40
+                validacao['motivo'].append(f"✅ Chave PIX correta: {bank_info['chave_pix_recebedor']}")
+            else:
+                validacao['motivo'].append(f"⚠️ Chave PIX diferente: {bank_info['chave_pix_recebedor']} (esperado: {recebedor_esperado['pix']})")
+        
+        # Check 2: CNPJ do recebedor
+        if bank_info.get('cnpj_recebedor'):
+            checks += 1
+            cnpj_limpo = re.sub(r'[^\d]', '', bank_info['cnpj_recebedor'])
+            cnpj_esperado = recebedor_esperado['cnpj']
+            
+            if cnpj_limpo == cnpj_esperado:
+                pontos += 40
+                validacao['motivo'].append(f"✅ CNPJ correto: {bank_info.get('cpf_cnpj_recebedor', cnpj_limpo)}")
+            else:
+                validacao['motivo'].append(f"⚠️ CNPJ diferente: {bank_info.get('cpf_cnpj_recebedor')} (esperado: {recebedor_esperado['cnpj_formatado']})")
+        
+        # Check 3: Nome do recebedor (menos confiável - variações de OCR)
+        if bank_info.get('nome_recebedor'):
+            checks += 1
+            nome_upper = bank_info['nome_recebedor'].upper()
+            nome_esperado_upper = recebedor_esperado['nome'].upper()
+            
+            # Buscar palavras-chave
+            palavras_chave = ['SERTAO', 'GRUPO']
+            encontrou = any(palavra in nome_upper for palavra in palavras_chave)
+            
+            if encontrou or nome_esperado_upper in nome_upper:
+                pontos += 20
+                validacao['motivo'].append(f"✅ Nome recebedor compatível: {bank_info['nome_recebedor']}")
+            else:
+                validacao['motivo'].append(f"⚠️ Nome recebedor diferente: {bank_info['nome_recebedor']} (esperado: {recebedor_esperado['nome']})")
+        
+        # Calcular confiança
+        if checks > 0:
+            validacao['confianca'] = int((pontos / (checks * 40)) * 100)  # Normalizar para 100%
+        
+        # Considerar válido se confiança >= 50%
+        validacao['valido'] = validacao['confianca'] >= 50
+        
+        # Se não extraiu nenhum dado do recebedor
+        if checks == 0:
+            validacao['motivo'].append("ℹ️ Dados do recebedor não encontrados no comprovante (OCR não identificou)")
+            validacao['valido'] = None  # Indeterminado
+        
+        return validacao
     
     @classmethod
     def process_receipt(cls, file_path: str) -> Dict:
@@ -514,12 +624,21 @@ class VisionOcrService:
             transaction_id = cls._find_transaction_id_in_text(text)
             date = cls._find_date_in_text(text)
             bank_info = cls._find_bank_info_in_text(text)
+            
+            # NOVO: Validar recebedor (se configurado)
+            from .config import FinanceiroConfig
+            validacao_recebedor = None
+            
+            if FinanceiroConfig.validar_recebedor_habilitado():
+                recebedor_esperado = FinanceiroConfig.get_recebedor_esperado()
+                validacao_recebedor = cls._validar_recebedor(bank_info, recebedor_esperado)
 
             return {
                 'amount': amount,
                 'transaction_id': transaction_id,
                 'date': date,
-                'bank_info': bank_info
+                'bank_info': bank_info,
+                'validacao_recebedor': validacao_recebedor  # NOVO campo
             }
             
         except OcrProcessingError as e:

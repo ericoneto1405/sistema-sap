@@ -239,6 +239,10 @@ def processar_recibo_ocr():
                 'agencia_recebedor': ocr_results.get('bank_info', {}).get('agencia_recebedor'),
                 'conta_recebedor': ocr_results.get('bank_info', {}).get('conta_recebedor'),
                 'chave_pix_recebedor': ocr_results.get('bank_info', {}).get('chave_pix_recebedor'),
+                # NOVO: Dados do recebedor (validação)
+                'nome_recebedor': ocr_results.get('bank_info', {}).get('nome_recebedor'),
+                'cnpj_recebedor': ocr_results.get('bank_info', {}).get('cnpj_recebedor'),
+                'validacao_recebedor': ocr_results.get('validacao_recebedor'),  # NOVO
                 'ocr_status': 'success'  # Indicar que OCR funcionou
             }
 

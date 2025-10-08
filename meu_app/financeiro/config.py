@@ -36,6 +36,16 @@ class FinanceiroConfig:
     PIX_REQUIRES_RECEIPT = False
     MIN_PAYMENT_VALUE = 0.01
     
+    # Configurações do RECEBEDOR (Grupo Sertão) - Para validação de comprovantes
+    RECEBEDOR_PIX = 'pix@gruposertao.com'
+    RECEBEDOR_CNPJ = '30080209000416'
+    RECEBEDOR_CNPJ_FORMATADO = '30.080.209/0004-16'
+    RECEBEDOR_NOME = 'GRUPO SERTAO'  # Possíveis variações: "GRUPO SERTÃO", "SERTAO", etc
+    
+    # Validação de recebedor
+    VALIDAR_RECEBEDOR = True  # Se True, gera aviso quando recebedor não bate
+    BLOQUEAR_RECEBEDOR_INVALIDO = False  # Se True, bloqueia pagamento (mais restritivo)
+    
     @classmethod
     def get_upload_directory(cls, upload_type: str = 'recibos') -> str:
         """
@@ -93,6 +103,26 @@ class FinanceiroConfig:
     def get_ocr_operation_timeout(cls) -> int:
         """Retorna timeout máximo (segundos) para operação assíncrona do Vision"""
         return int(os.getenv('FINANCEIRO_OCR_TIMEOUT', cls.OCR_OPERATION_TIMEOUT))
+    
+    @classmethod
+    def validar_recebedor_habilitado(cls) -> bool:
+        """Verifica se validação de recebedor está habilitada"""
+        return cls.VALIDAR_RECEBEDOR
+    
+    @classmethod
+    def bloquear_recebedor_invalido(cls) -> bool:
+        """Verifica se deve bloquear pagamentos com recebedor inválido"""
+        return cls.BLOQUEAR_RECEBEDOR_INVALIDO
+    
+    @classmethod
+    def get_recebedor_esperado(cls) -> dict:
+        """Retorna dados do recebedor esperado"""
+        return {
+            'pix': cls.RECEBEDOR_PIX,
+            'cnpj': cls.RECEBEDOR_CNPJ,
+            'cnpj_formatado': cls.RECEBEDOR_CNPJ_FORMATADO,
+            'nome': cls.RECEBEDOR_NOME
+        }
     
     @classmethod
     def get_detection_type(cls) -> str:
