@@ -479,38 +479,61 @@ class VisionOcrService:
                 result['conta_recebedor'] = matches[0]
                 break
         
-        # Padrões para chave PIX
+        # Padrões para chave PIX (busca abrangente)
+        # Busca TODAS as chaves PIX e filtra a da empresa
+        pix_empresa = 'pix@gruposertao.com'
+        
         pix_patterns = [
-            r'(?:CHAVE\s+PIX|PIX)\s*[:\-]?\s*([a-zA-Z0-9@\.\-]{10,})',
-            r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',  # Email
-            r'(\+55\s?\d{2}\s?\d{4,5}\s?\d{4})'  # Telefone
+            r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',  # Qualquer email
+            r'(\+55\s?\d{2}\s?\d{4,5}[\/\-]?\d{4})',  # Telefone
+            r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})',  # Chave aleatória
         ]
         
+        chaves_encontradas = []
         for pattern in pix_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
-            if matches:
-                result['chave_pix_recebedor'] = matches[0]
+            chaves_encontradas.extend(matches)
+        
+        # Verificar se alguma chave encontrada é da empresa
+        for chave in chaves_encontradas:
+            chave_lower = chave.lower().strip()
+            pix_empresa_lower = pix_empresa.lower()
+            
+            if chave_lower == pix_empresa_lower:
+                result['chave_pix_recebedor'] = chave
                 break
         
-        # NOVO: Extrair CNPJ do recebedor (quem recebeu o pagamento)
-        # Formatos: 30080209000416, 30.080.209/0004-16, 30.080.209/004-16
+        # Se não encontrou a chave da empresa, pegar a primeira chave encontrada (pode ser útil)
+        if not result['chave_pix_recebedor'] and chaves_encontradas:
+            result['chave_pix_recebedor'] = chaves_encontradas[0]
+        
+        # NOVO: Extrair CNPJ do recebedor (busca abrangente)
+        # Busca TODOS os CNPJs no texto e filtra o da empresa
+        cnpj_empresa = '30080209000416'  # Grupo Sertão
+        
+        # Padrões para encontrar QUALQUER CNPJ no texto
         cnpj_patterns = [
-            r'(?:PARA|RECEBEDOR|FAVORECIDO|BENEFICIARIO)[\s\S]{0,100}?CNPJ\s*[:\-]?\s*([\d\./-]{14,20})',
-            r'CNPJ\s*[:\-]?\s*([\d\./-]{14,20})',  # CNPJ genérico
-            r'(\d{2}\.?\d{3}\.?\d{3}[\/\-]?\d{4}[\/\-]?\d{2})',  # Formato brasileiro
+            r'(\d{2}\.?\d{3}\.?\d{3}[\/\-]?\d{3,4}[\/\-]?\d{2})',  # Com formatação
             r'(\d{14})',  # 14 dígitos seguidos
         ]
         
+        cnpjs_encontrados = []
         for pattern in cnpj_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            if matches:
-                cnpj_encontrado = matches[0].strip()
-                # Limpar formatação
-                cnpj_limpo = re.sub(r'[^\d]', '', cnpj_encontrado)
+            matches = re.findall(pattern, text)
+            for match in matches:
+                cnpj_limpo = re.sub(r'[^\d]', '', match)
                 if len(cnpj_limpo) == 14:
-                    result['cnpj_recebedor'] = cnpj_limpo
-                    result['cpf_cnpj_recebedor'] = cnpj_encontrado  # Com formatação
-                    break
+                    cnpjs_encontrados.append({
+                        'original': match,
+                        'limpo': cnpj_limpo
+                    })
+        
+        # Verificar se algum CNPJ encontrado é da empresa
+        for cnpj_data in cnpjs_encontrados:
+            if cnpj_data['limpo'] == cnpj_empresa:
+                result['cnpj_recebedor'] = cnpj_data['limpo']
+                result['cpf_cnpj_recebedor'] = cnpj_data['original']
+                break
         
         # NOVO: Extrair nome do recebedor
         # Procurar após palavras-chave "Para:", "Recebedor:", "Favorecido:", "Beneficiário:"
