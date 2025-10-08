@@ -49,7 +49,15 @@ def admin_user(app):
         user.set_senha('admin123')
         db.session.add(user)
         db.session.commit()
-        return user
+        user_id = user.id  # Captura ID antes de sair do contexto
+        db.session.expunge(user)  # Remove da sessão
+    
+    # Cria objeto simples com id
+    class UserStub:
+        def __init__(self, user_id):
+            self.id = user_id
+    
+    return UserStub(user_id)
 
 
 @pytest.fixture
@@ -69,7 +77,14 @@ def financeiro_user(app):
         user.set_senha('financeiro123')
         db.session.add(user)
         db.session.commit()
-        return user
+        user_id = user.id
+        db.session.expunge(user)
+    
+    class UserStub:
+        def __init__(self, user_id):
+            self.id = user_id
+    
+    return UserStub(user_id)
 
 
 @pytest.fixture
@@ -89,7 +104,14 @@ def logistica_user(app):
         user.set_senha('logistica123')
         db.session.add(user)
         db.session.commit()
-        return user
+        user_id = user.id
+        db.session.expunge(user)
+    
+    class UserStub:
+        def __init__(self, user_id):
+            self.id = user_id
+    
+    return UserStub(user_id)
 
 
 @pytest.fixture
@@ -109,7 +131,14 @@ def vendedor_user(app):
         user.set_senha('vendedor123')
         db.session.add(user)
         db.session.commit()
-        return user
+        user_id = user.id
+        db.session.expunge(user)
+    
+    class UserStub:
+        def __init__(self, user_id):
+            self.id = user_id
+    
+    return UserStub(user_id)
 
 
 class TestRBACBasics:
@@ -123,7 +152,12 @@ class TestRBACBasics:
             sess['usuario_id'] = admin_user.id
             sess['usuario_tipo'] = 'admin'
         
-        with app.app_context():
+        with app.test_request_context():
+            # Copia sessão do client para o request context
+            from flask import session as request_session
+            request_session['usuario_id'] = admin_user.id
+            request_session['usuario_tipo'] = 'admin'
+            
             roles = get_user_roles()
             assert 'ADMIN' in roles
     
@@ -131,15 +165,15 @@ class TestRBACBasics:
         """Usuário financeiro deve ter role FINANCEIRO"""
         from app.auth.rbac import get_user_roles
         
-        with client.session_transaction() as sess:
-            sess['usuario_id'] = financeiro_user.id
-            sess['usuario_tipo'] = 'comum'
-            sess['acesso_financeiro'] = True
-            sess['acesso_clientes'] = True
-            sess['acesso_produtos'] = True
-            sess['acesso_pedidos'] = True
-        
-        with app.app_context():
+        with app.test_request_context():
+            from flask import session as request_session
+            request_session['usuario_id'] = financeiro_user.id
+            request_session['usuario_tipo'] = 'comum'
+            request_session['acesso_financeiro'] = True
+            request_session['acesso_clientes'] = True
+            request_session['acesso_produtos'] = True
+            request_session['acesso_pedidos'] = True
+            
             roles = get_user_roles()
             assert 'FINANCEIRO' in roles
     
@@ -332,15 +366,15 @@ class TestRBACRoleMapping:
         """has_any_role deve retornar True quando usuário tem o role"""
         from app.auth.rbac import has_any_role
         
-        with client.session_transaction() as sess:
-            sess['usuario_id'] = financeiro_user.id
-            sess['usuario_tipo'] = 'comum'
-            sess['acesso_financeiro'] = True
-            sess['acesso_clientes'] = True
-            sess['acesso_produtos'] = True
-            sess['acesso_pedidos'] = True
-        
-        with app.app_context():
+        with app.test_request_context():
+            from flask import session as request_session
+            request_session['usuario_id'] = financeiro_user.id
+            request_session['usuario_tipo'] = 'comum'
+            request_session['acesso_financeiro'] = True
+            request_session['acesso_clientes'] = True
+            request_session['acesso_produtos'] = True
+            request_session['acesso_pedidos'] = True
+            
             assert has_any_role(['FINANCEIRO']) is True
             assert has_any_role(['ADMIN', 'FINANCEIRO']) is True
     
