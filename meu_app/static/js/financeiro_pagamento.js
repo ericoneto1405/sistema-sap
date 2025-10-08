@@ -189,6 +189,52 @@ document.addEventListener('DOMContentLoaded', () => {
                         bancoStatus.style.marginTop = '5px';
                         ocrStatus.appendChild(bancoStatus);
                     }
+                    
+                    // NOVO: Validação do recebedor
+                    if (data.validacao_recebedor) {
+                        const validacao = data.validacao_recebedor;
+                        const validacaoDiv = document.createElement('div');
+                        validacaoDiv.style.marginTop = '15px';
+                        validacaoDiv.style.padding = '12px';
+                        validacaoDiv.style.borderRadius = '8px';
+                        validacaoDiv.style.fontWeight = 'bold';
+                        
+                        if (validacao.valido === true) {
+                            validacaoDiv.style.background = '#d4edda';
+                            validacaoDiv.style.border = '2px solid #28a745';
+                            validacaoDiv.style.color = '#155724';
+                            validacaoDiv.innerHTML = `
+                                <div style="margin-bottom: 8px;">✅ Pagamento para conta CORRETA (Grupo Sertão)</div>
+                                <div style="font-size: 0.85em; font-weight: normal;">${validacao.motivo.join('<br>')}</div>
+                                <div style="margin-top: 8px; font-size: 0.85em;">Confiança: ${validacao.confianca}%</div>
+                            `;
+                        } else if (validacao.valido === false) {
+                            validacaoDiv.style.background = '#fff3cd';
+                            validacaoDiv.style.border = '2px solid #ffc107';
+                            validacaoDiv.style.color = '#856404';
+                            validacaoDiv.innerHTML = `
+                                <div style="margin-bottom: 8px;">⚠️ ATENÇÃO: Recebedor não confere!</div>
+                                <div style="font-size: 0.85em; font-weight: normal;">${validacao.motivo.join('<br>')}</div>
+                                <div style="margin-top: 8px; font-weight: bold; color: #d9534f;">
+                                    ⚠️ VERIFIQUE se o pagamento foi feito para a conta da empresa!
+                                </div>
+                            `;
+                        } else {
+                            validacaoDiv.style.background = '#e7f3ff';
+                            validacaoDiv.style.border = '2px solid #2196F3';
+                            validacaoDiv.style.color = '#0c5460';
+                            validacaoDiv.innerHTML = `
+                                <div>ℹ️ Dados do recebedor não encontrados no comprovante</div>
+                                <div style="font-size: 0.85em; font-weight: normal; margin-top: 5px;">
+                                    Verifique manualmente se o pagamento foi feito para:<br>
+                                    PIX: <strong>pix@gruposertao.com</strong><br>
+                                    CNPJ: <strong>30.080.209/0004-16</strong>
+                                </div>
+                            `;
+                        }
+                        
+                        ocrStatus.appendChild(validacaoDiv);
+                    }
 
                     if (ocrStatusText === 'failed') {
                         const manualDiv = document.createElement('div');
