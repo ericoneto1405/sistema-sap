@@ -258,56 +258,88 @@ class VisionOcrService:
     def _find_amount_in_text(text: str) -> Optional[float]:
         """
         Encontra o valor monetário mais provável em uma string de texto,
-        dando prioridade a palavras-chave específicas.
-        """
-        text = text.upper().replace('\u00A0', ' ').replace('\t', ' ')
+        dando prioridade a palavras-chave específicas e valores maiores.
         
-        # Padrões prioritários para valores
-        priority_patterns = [
-            r'(?:VALOR\s+DA\s+TRANSFER.NCIA|VALOR\s+DO\s+PAGAMENTO|VALOR\s+DO\s+PIX|TOTAL\s+GERAL|VALOR\s+L.QUIDO|VALOR\s+A\s+TRANSFERIR)[\s\S]{0,120}?R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})',
-            r'(?:TRANSFERIDO|PAGO|VALOR|TOTAL)[\s\S]{0,80}?R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})'
+        Estratégia:
+        1. Busca valores após palavras-chave prioritárias (Valor:, Total:, etc)
+        2. Se não encontrar, busca TODOS valores e retorna o MAIOR (principal)
+        3. Ignora valores muito pequenos (< R$ 5,00) se houver valores maiores
+        """
+        import unicodedata
+        
+        # Normalizar acentos
+        def remove_accents(s):
+            return ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
+        
+        text_normalized = remove_accents(text).upper().replace('\u00A0', ' ').replace('\t', ' ')
+        
+        # Padrão 1: MÁXIMA PRIORIDADE - Palavras-chave específicas de transação
+        # IMPORTANTE: \d+ para aceitar qualquer quantidade de dígitos (não limitar a 3)
+        max_priority_patterns = [
+            r'(?:VALOR\s+DA\s+TRANSACAO|DADOS\s+DA\s+TRANSACAO[\s\S]{0,100}VALOR)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
+            r'(?:VALOR\s+TRANSFERIDO|VALOR\s+DO\s+PAGAMENTO|VALOR\s+DO\s+PIX)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
+            r'(?:VALOR\s+LIQUIDO|TOTAL\s+LIQUIDO)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
         ]
         
-        for pattern in priority_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+        for pattern in max_priority_patterns:
+            matches = re.findall(pattern, text_normalized, re.IGNORECASE)
             if matches:
                 value_str = matches[0]
                 try:
                     return VisionOcrService._parse_currency_value(value_str)
                 except (ValueError, TypeError):
                     continue
-
-        # Padrões secundários
-        secondary_patterns = [
-            r'(?:TOTAL|VALOR\s+A\s+PAGAR|VALOR\s+TOTAL|VALOR\s+PAGO|TOTAL\s+PAGO)\s*[:\-]?\s*R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})'
+        
+        # Padrão 2: ALTA PRIORIDADE - Labels próximos ao valor
+        # \d+ para aceitar qualquer quantidade de dígitos
+        high_priority_patterns = [
+            r'(?:VALOR|TOTAL)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
+            r'(?:TRANSFERIDO|PAGO)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
         ]
         
-        found_values = []
-        for pattern in secondary_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+        high_priority_values = []
+        for pattern in high_priority_patterns:
+            matches = re.findall(pattern, text_normalized, re.IGNORECASE)
             for match in matches:
                 try:
-                    found_values.append(VisionOcrService._parse_currency_value(match))
-                except ValueError:
+                    valor = VisionOcrService._parse_currency_value(match)
+                    high_priority_values.append(valor)
+                except (ValueError, TypeError):
                     continue
         
-        if found_values:
-            return max(found_values)
+        # Se encontrou valores prioritários, retornar o MAIOR
+        if high_priority_values:
+            return max(high_priority_values)
 
-        # Fallback: qualquer valor monetário
-        fallback_pattern = r'R?\$?\s*(\d{1,3}(?:[.,\s]\d{3})*[.,]\d{2})'
-        matches = re.findall(fallback_pattern, text)
-        found_values = []
+        # Padrão 3: FALLBACK - Buscar TODOS valores monetários e retornar o MAIOR
+        # Ignora valores muito pequenos (< 5.00) se houver maiores
+        # \d+ para aceitar qualquer quantidade de dígitos
+        fallback_pattern = r'R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})'
+        matches = re.findall(fallback_pattern, text_normalized)
+        all_values = []
+        
         for match in matches:
             try:
-                found_values.append(VisionOcrService._parse_currency_value(match))
-            except ValueError:
+                valor = VisionOcrService._parse_currency_value(match)
+                # Ignorar valores zerados
+                if valor > 0:
+                    all_values.append(valor)
+            except (ValueError, TypeError):
                 continue
         
-        if found_values:
-            return max(found_values)
-
-        return None
+        if not all_values:
+            return None
+        
+        # Se todos valores são pequenos (< 1000), retornar o maior
+        max_valor = max(all_values)
+        
+        # Se houver valores > 5.00, filtrar os muito pequenos (taxas)
+        if max_valor >= 5.00:
+            valores_filtrados = [v for v in all_values if v >= 5.00]
+            if valores_filtrados:
+                return max(valores_filtrados)
+        
+        return max_valor
 
     @staticmethod
     def _parse_currency_value(value_str: str) -> float:
