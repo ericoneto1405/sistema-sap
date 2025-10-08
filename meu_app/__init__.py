@@ -33,6 +33,21 @@ cache = Cache()
 login_manager = LoginManager()
 
 
+def setup_api_docs(app):
+    """
+    Configura documentação OpenAPI/Swagger (FASE 10)
+    
+    Adiciona:
+    - GET /docs - Swagger UI interativo
+    - GET /apispec.json - OpenAPI specification
+    """
+    from .api.docs import init_swagger
+    
+    init_swagger(app)
+    
+    app.logger.info('Documentação OpenAPI disponível em /docs')
+
+
 def create_app(config_class=None):
     """
     Função fábrica para criar a aplicação Flask
@@ -142,21 +157,6 @@ def setup_observability(app):
     
     # 3. Middleware de rastreamento
     setup_request_tracking(app)
-
-
-def setup_api_docs(app):
-    """
-    Configura documentação OpenAPI/Swagger (FASE 10)
-    
-    Adiciona:
-    - GET /docs - Swagger UI interativo
-    - GET /apispec.json - OpenAPI specification
-    """
-    from .api.docs import init_swagger
-    
-    init_swagger(app)
-    
-    app.logger.info('Documentação OpenAPI disponível em /docs')
 
 
 def register_error_handlers(app):

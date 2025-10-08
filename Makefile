@@ -34,6 +34,7 @@ help:
 	@echo "  make dev              - Inicia servidor de desenvolvimento"
 	@echo "  make install          - Instala dependências"
 	@echo "  make migrate          - Executa migrations"
+	@echo "  make run-worker       - Inicia worker assíncrono (Celery/RQ)"
 	@echo ""
 	@echo "$(GREEN)Qualidade:$(NC)"
 	@echo "  make test             - Executa testes com coverage"
@@ -42,6 +43,7 @@ help:
 	@echo "  make format           - Formata código (black + isort)"
 	@echo "  make type-check       - Verifica tipos (mypy)"
 	@echo "  make pre-commit       - Executa pre-commit hooks"
+	@echo "  make smoke            - Smoke tests (endpoints críticos)"
 	@echo ""
 	@echo "$(GREEN)Segurança:$(NC)"
 	@echo "  make security         - Análise de segurança (bandit + pip-audit)"
@@ -50,6 +52,7 @@ help:
 	@echo "  make clean            - Remove arquivos temporários"
 	@echo "  make init-db          - Inicializa banco de dados"
 	@echo "  make backup-db        - Faz backup do banco"
+	@echo "  make docs             - Abre documentação"
 
 # ===========================
 # DESENVOLVIMENTO
@@ -58,6 +61,11 @@ help:
 dev:
 	@echo "$(GREEN)🚀 Iniciando servidor de desenvolvimento...$(NC)"
 	$(PYTHON) run.py
+
+run-worker:
+	@echo "$(GREEN)🔄 Iniciando worker assíncrono...$(NC)"
+	@echo "$(YELLOW)⚠️  Worker ainda não configurado (implementar Celery/RQ na Fase 7)$(NC)"
+	@echo "$(BLUE)ℹ️  Por enquanto, tarefas pesadas são executadas de forma síncrona$(NC)"
 
 install:
 	@echo "$(GREEN)📦 Instalando dependências...$(NC)"
@@ -113,6 +121,11 @@ test-verbose:
 coverage-report:
 	@echo "$(GREEN)📊 Abrindo relatório de coverage...$(NC)"
 	open htmlcov/index.html || xdg-open htmlcov/index.html
+
+smoke:
+	@echo "$(GREEN)🧪 Executando smoke tests...$(NC)"
+	@chmod +x scripts/smoke_test.sh
+	@./scripts/smoke_test.sh
 
 # ===========================
 # QUALIDADE DE CÓDIGO
@@ -212,7 +225,16 @@ docs:
 	@echo "  - docs/MIGRATIONS_ALEMBIC.md (FASE 5)"
 	@echo "  - docs/OBSERVABILIDADE.md (FASE 6)"
 	@echo "  - docs/GUIA_CACHE.md (FASE 8)"
+	@echo "  - docs/QUALIDADE_CI_CD.md (FASE 9)"
+	@echo "  - docs/API_EXAMPLES.md (FASE 10)"
 	@echo "  - RECOMENDACOES_INDICES.md (FASE 8)"
+	@echo ""
+	@echo "$(BLUE)🌐 Documentação interativa:$(NC)"
+	@echo "  http://localhost:5004/docs (Swagger UI)"
+
+docs-open:
+	@echo "$(GREEN)🌐 Abrindo documentação interativa...$(NC)"
+	@open http://localhost:5004/docs || xdg-open http://localhost:5004/docs
 
 # ===========================
 # DIAGNÓSTICO

@@ -23,6 +23,15 @@ Sistema completo de gestão empresarial desenvolvido em Flask.
 - 🎯 **Painel do Vendedor** - Análise de clientes e rankings
 - 📋 **Coletas** - Logística e geração de recibos PDF
 
+## 🏗️ Arquitetura Enterprise
+
+- 🗃️ **Migrations** - Alembic para versionamento de schema
+- 🔍 **Observabilidade** - Logs JSON + Métricas Prometheus
+- ⚡ **Cache** - Redis com invalidação inteligente
+- 🧪 **CI/CD** - GitHub Actions + Pre-commit hooks
+- 📚 **API Docs** - Swagger UI interativo em `/docs`
+- 🏥 **Healthchecks** - Kubernetes-ready
+
 ---
 
 ## 🚀 Início Rápido
@@ -144,13 +153,52 @@ sistema-sap/
 
 ## 🛠 Tecnologias
 
-- **Backend:** Flask 3.0, SQLAlchemy 2.0
+- **Backend:** Flask 2.3, SQLAlchemy 2.0
 - **Banco de Dados:** SQLite (dev) / PostgreSQL (prod)
 - **Frontend:** HTML5, CSS3, JavaScript
-- **Segurança:** Flask-WTF, Flask-Limiter, Flask-Talisman
+- **Segurança:** Flask-WTF, Flask-Limiter, Flask-Talisman, Bandit
 - **APIs:** Google Cloud Vision (OCR)
 - **PDF:** ReportLab
 - **WSGI:** Gunicorn
+- **Observabilidade:** Prometheus, JSON Logging
+- **Cache:** Redis, Flask-Caching
+- **CI/CD:** GitHub Actions, Pre-commit
+- **Documentação:** Swagger/OpenAPI (Flasgger)
+
+---
+
+## ⚡ Comandos Rápidos (Makefile)
+
+```bash
+# Desenvolvimento
+make dev              # Iniciar servidor
+make install          # Instalar dependências
+make migrate          # Executar migrations
+
+# Testes
+make test             # Testes com coverage
+make smoke            # Smoke tests rápidos
+make test-fast        # Testes sem coverage
+
+# Qualidade
+make format           # Formatar código (Black + isort)
+make lint             # Linters (Ruff)
+make security         # Análise de segurança
+make pre-commit       # Pre-commit hooks
+
+# CI local
+make ci-local         # Pipeline completa local
+
+# Documentação
+make docs             # Listar docs disponíveis
+make docs-open        # Abrir Swagger UI
+
+# Utilitários
+make backup-db        # Backup do banco
+make clean            # Limpar cache
+make status           # Status do sistema
+make help             # Ver todos comandos
+```
 
 ---
 
