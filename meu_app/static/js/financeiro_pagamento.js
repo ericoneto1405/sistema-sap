@@ -1,8 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Script financeiro_pagamento.js carregado');
+    
     const form = document.getElementById('form-pagamento');
     if (!form) {
+        console.error('❌ Formulário #form-pagamento não encontrado');
         return;
     }
+    console.log('✅ Formulário encontrado');
 
     const reciboInput = document.getElementById('recibo');
     const valorInput = document.getElementById('valor');
@@ -10,6 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const ocrStatus = document.getElementById('ocr-status');
     const metodoPagamentoInput = document.getElementById('metodo_pagamento');
     const ocrUrl = form.dataset.ocrUrl;
+    
+    console.log('📍 OCR URL:', ocrUrl);
+    console.log('📍 Elementos:', {
+        reciboInput: !!reciboInput,
+        valorInput: !!valorInput,
+        idTransacaoInput: !!idTransacaoInput,
+        ocrStatus: !!ocrStatus
+    });
 
     const parseValor = (valor) => {
         if (typeof valor === 'number') {
@@ -58,14 +70,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (reciboInput) {
+        console.log('✅ Listener de upload registrado no campo recibo');
+        
         reciboInput.addEventListener('change', (event) => {
+            console.log('📁 Arquivo selecionado, iniciando upload OCR...');
+            
             const { files } = event.target;
             if (!files || !files[0]) {
+                console.warn('⚠️ Nenhum arquivo selecionado');
                 return;
             }
+            
+            console.log('📁 Arquivo:', files[0].name, '- Tamanho:', files[0].size, 'bytes');
 
             if (!ocrUrl) {
-                console.warn('Endpoint OCR não configurado.');
+                console.error('❌ Endpoint OCR não configurado (data-ocr-url)');
                 return;
             }
 
@@ -80,13 +99,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('csrf_token', csrfTokenInput.value);
             }
 
+            console.log('🌐 Enviando request para:', ocrUrl);
+            
             fetch(ocrUrl, {
                 method: 'POST',
                 body: formData,
+                headers: {
+                    'X-CSRFToken': csrfTokenInput ? csrfTokenInput.value : ''
+                }
             })
-                .then((response) => response.json())
+                .then((response) => {
+                    console.log('📥 Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then((data) => {
-                    console.log('OCR retorno:', data);
+                    console.log('✅ OCR retorno completo:', data);
                     let foundSomething = false;
                     ocrStatus.innerHTML = '';
 
@@ -110,10 +140,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     ocrStatus.appendChild(statusDiv);
 
                     if (data.valor_encontrado !== undefined && data.valor_encontrado !== null) {
+                        console.log('💰 Valor encontrado pelo OCR:', data.valor_encontrado);
                         const valorNumerico = parseValor(data.valor_encontrado);
+                        console.log('💰 Valor parseado:', valorNumerico);
+                        
                         if (valorNumerico !== null) {
                             valorInput.value = valorNumerico.toFixed(2);
+                            console.log('✅ Campo valor preenchido com:', valorInput.value);
                             foundSomething = true;
+                        } else {
+                            console.warn('⚠️ Não foi possível parsear o valor:', data.valor_encontrado);
                         }
                         const valorStatus = document.createElement('div');
                         if (valorNumerico !== null) {
@@ -172,7 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch((error) => {
-                    console.error('Erro no fetch do OCR:', error);
+                    console.error('❌ ERRO no fetch do OCR:', error);
+                    console.error('❌ Stack trace:', error.stack);
                     ocrStatus.innerHTML = `
                         <div style="color: orange; font-weight: bold; margin-bottom: 10px;">
                             ⚠️ OCR temporariamente indisponível
