@@ -63,9 +63,11 @@ dev:
 	$(PYTHON) run.py
 
 run-worker:
-	@echo "$(GREEN)🔄 Iniciando worker assíncrono...$(NC)"
-	@echo "$(YELLOW)⚠️  Worker ainda não configurado (implementar Celery/RQ na Fase 7)$(NC)"
-	@echo "$(BLUE)ℹ️  Por enquanto, tarefas pesadas são executadas de forma síncrona$(NC)"
+	@echo "$(GREEN)🔄 Iniciando worker RQ (Fase 7)...$(NC)"
+	@echo "$(BLUE)ℹ️  Processando fila 'ocr' com timeout de 5 minutos$(NC)"
+	@echo "$(YELLOW)⚠️  Certifique-se que o Redis está rodando: redis-server$(NC)"
+	@echo ""
+	$(PYTHON) worker.py
 
 install:
 	@echo "$(GREEN)📦 Instalando dependências...$(NC)"
@@ -224,6 +226,7 @@ docs:
 	@echo "  - docs/GUIA_USUARIO.md"
 	@echo "  - docs/MIGRATIONS_ALEMBIC.md (FASE 5)"
 	@echo "  - docs/OBSERVABILIDADE.md (FASE 6)"
+	@echo "  - docs/FASE7_FILA_ASSINCRONA.md (FASE 7)"
 	@echo "  - docs/GUIA_CACHE.md (FASE 8)"
 	@echo "  - docs/QUALIDADE_CI_CD.md (FASE 9)"
 	@echo "  - docs/API_EXAMPLES.md (FASE 10)"

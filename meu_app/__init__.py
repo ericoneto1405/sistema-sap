@@ -346,6 +346,7 @@ def register_blueprints(app):
     from .apuracao import apuracao_bp
     from .log_atividades import log_atividades_bp
     from .vendedor import vendedor_bp
+    from .jobs.routes import bp as jobs_bp  # Fase 7
     
     # Registrar blueprints (ordem não importa, prefixos evitam colisão)
     app.register_blueprint(produtos_bp)
@@ -358,6 +359,7 @@ def register_blueprints(app):
     app.register_blueprint(apuracao_bp)
     app.register_blueprint(log_atividades_bp)
     app.register_blueprint(vendedor_bp)
+    app.register_blueprint(jobs_bp)  # Fase 7
     
     app.logger.info(f'Blueprints registrados: {len(app.blueprints)}')
 
