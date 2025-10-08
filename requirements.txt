@@ -44,5 +44,6 @@ prometheus-client==0.20.0
 
 # Documentação OpenAPI (FASE 10)
 flasgger==0.9.7.1
+flask-restful==0.3.10
 apispec==6.6.1
 marshmallow==3.22.0
