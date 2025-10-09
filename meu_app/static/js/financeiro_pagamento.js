@@ -15,6 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const metodoPagamentoInput = document.getElementById('metodo_pagamento');
     const ocrUrl = form.dataset.ocrUrl;
     
+    // Campos hidden para dados do OCR
+    const dataComprovanteInput = document.getElementById('data_comprovante');
+    const bancoEmitenteInput = document.getElementById('banco_emitente');
+    const agenciaRecebedorInput = document.getElementById('agencia_recebedor');
+    const contaRecebedorInput = document.getElementById('conta_recebedor');
+    const chavePixRecebedorInput = document.getElementById('chave_pix_recebedor');
+    
     console.log('📍 OCR URL:', ocrUrl);
     console.log('📍 Elementos:', {
         reciboInput: !!reciboInput,
@@ -184,7 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         foundSomething = true;
                     }
 
-                    if (data.data_encontrada) {
+                    // Preencher campos hidden com dados do OCR
+                    if (data.data_encontrada && dataComprovanteInput) {
+                        dataComprovanteInput.value = data.data_encontrada;
                         const dataStatus = document.createElement('div');
                         dataStatus.innerHTML = `📅 Data: <strong>${data.data_encontrada}</strong>`;
                         dataStatus.style.color = 'blue';
@@ -192,13 +201,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         ocrStatus.appendChild(dataStatus);
                     }
 
-                    if (data.banco_emitente) {
+                    if (data.banco_emitente && bancoEmitenteInput) {
+                        bancoEmitenteInput.value = data.banco_emitente;
                         const bancoStatus = document.createElement('div');
                         bancoStatus.innerHTML = `🏦 Banco: <strong>${data.banco_emitente}</strong>`;
                         bancoStatus.style.color = 'blue';
                         bancoStatus.style.marginTop = '5px';
                         ocrStatus.appendChild(bancoStatus);
                     }
+                    
+                    if (data.agencia_recebedor && agenciaRecebedorInput) {
+                        agenciaRecebedorInput.value = data.agencia_recebedor;
+                    }
+                    
+                    if (data.conta_recebedor && contaRecebedorInput) {
+                        contaRecebedorInput.value = data.conta_recebedor;
+                    }
+                    
+                    if (data.chave_pix_recebedor && chavePixRecebedorInput) {
+                        chavePixRecebedorInput.value = data.chave_pix_recebedor;
+                    }
+                    
+                    // Limpar o campo de arquivo após processar OCR para evitar re-envio
+                    // Isso previne erro de duplicação quando o usuário confirmar o pagamento
+                    console.log('🗑️ Limpando campo de arquivo após OCR processado');
+                    reciboInput.value = '';
                     
                     // NOVO: Validação do recebedor (MAIS VISÍVEL E PROFISSIONAL)
                     if (data.validacao_recebedor) {
