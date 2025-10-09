@@ -155,7 +155,7 @@ class ReceiptService:
             ]))
             
             story.append(items_table)
-            story.append(Spacer(1, 0.8*cm))
+            story.append(Spacer(1, 0.5*cm))
             
             # ========================================
             # SEÇÃO DE ASSINATURAS - LAYOUT PROFISSIONAL
@@ -172,7 +172,7 @@ class ReceiptService:
                 fontName='Helvetica-Bold'
             )
             story.append(Paragraph("ASSINATURAS", assinaturas_title))
-            story.append(Spacer(1, 0.5*cm))
+            story.append(Spacer(1, 0.3*cm))
             
             # ========================================
             # ASSINATURA DO CLIENTE (Pessoa que Coletou)
@@ -191,8 +191,8 @@ class ReceiptService:
             story.append(Paragraph(f"RETIRADO POR: {coleta_data.get('nome_retirada', 'N/A').upper()}", cliente_nome_style))
             
             # Linha pontilhada para assinatura (mais larga e visível)
-            linha_assinatura = Drawing(12*cm, 1*cm)
-            linha_assinatura.add(Line(0, 0.5*cm, 12*cm, 0.5*cm, 
+            linha_assinatura = Drawing(12*cm, 0.8*cm)
+            linha_assinatura.add(Line(0, 0.4*cm, 12*cm, 0.4*cm, 
                                      strokeColor=colors.black,
                                      strokeWidth=1,
                                      strokeDashArray=[3, 3]))
@@ -222,7 +222,7 @@ class ReceiptService:
             )
             story.append(Paragraph(f"CPF/RG: {coleta_data.get('documento_retirada', '_________________')}", doc_cliente_style))
             
-            story.append(Spacer(1, 0.8*cm))
+            story.append(Spacer(1, 0.5*cm))
             
             # ========================================
             # ASSINATURA DO FUNCIONÁRIO (Conferente)
@@ -231,8 +231,8 @@ class ReceiptService:
             story.append(Paragraph(f"LIBERADO POR: {coleta_data.get('nome_conferente', 'N/A').upper()}", cliente_nome_style))
             
             # Linha pontilhada para assinatura
-            linha_funcionario = Drawing(12*cm, 1*cm)
-            linha_funcionario.add(Line(0, 0.5*cm, 12*cm, 0.5*cm,
+            linha_funcionario = Drawing(12*cm, 0.8*cm)
+            linha_funcionario.add(Line(0, 0.4*cm, 12*cm, 0.4*cm,
                                       strokeColor=colors.black,
                                       strokeWidth=1,
                                       strokeDashArray=[3, 3]))
@@ -244,7 +244,7 @@ class ReceiptService:
             # CPF do conferente
             story.append(Paragraph(f"CPF: {coleta_data.get('cpf_conferente', '_________________')}", doc_cliente_style))
             
-            story.append(Spacer(1, 1*cm))
+            story.append(Spacer(1, 0.5*cm))
             
             # ========================================
             # ÁREA PARA ANEXAR DOCUMENTO (MUITO MAIOR)
@@ -262,11 +262,11 @@ class ReceiptService:
             )
             story.append(Paragraph("⚠️ ANEXAR CÓPIA DO DOCUMENTO DE IDENTIFICAÇÃO ABAIXO ⚠️", doc_title_style))
             
-            # Retângulo MAIOR para colar documento (otimizado para caber em 1 página)
-            doc_drawing = Drawing(16*cm, 5.5*cm)
+            # Retângulo para colar documento (otimizado para caber em 1 página)
+            doc_drawing = Drawing(16*cm, 4*cm)
             
             # Retângulo tracejado bem destacado
-            rect = Rect(0, 0, 16*cm, 5.5*cm)
+            rect = Rect(0, 0, 16*cm, 4*cm)
             rect.strokeColor = colors.black
             rect.strokeWidth = 2
             rect.strokeDashArray = [8, 4]
@@ -275,7 +275,7 @@ class ReceiptService:
             
             # Texto dentro do retângulo
             from reportlab.graphics.shapes import String
-            texto_centralizado = String(8*cm, 2.75*cm, 
+            texto_centralizado = String(8*cm, 2*cm, 
                                        "COLAR CÓPIA DO DOCUMENTO AQUI",
                                        fontSize=16,
                                        fillColor=colors.grey,
@@ -283,7 +283,7 @@ class ReceiptService:
             doc_drawing.add(texto_centralizado)
             
             # Moldura interna (guia visual)
-            moldura_interna = Rect(0.3*cm, 0.3*cm, 15.4*cm, 4.9*cm)
+            moldura_interna = Rect(0.3*cm, 0.3*cm, 15.4*cm, 3.4*cm)
             moldura_interna.strokeColor = colors.lightgrey
             moldura_interna.strokeWidth = 1
             moldura_interna.strokeDashArray = [3, 3]
