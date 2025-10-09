@@ -155,48 +155,155 @@ class ReceiptService:
             ]))
             
             story.append(items_table)
-            story.append(Spacer(1, 1*cm))
+            story.append(Spacer(1, 1.5*cm))
             
-            # Área de assinaturas (lado a lado)
-            signature_data = [
-                ['Assinatura do Cliente', 'Assinatura do Funcionário'],
-                ['', ''],
-                ['', ''],
-                ['', ''],
-                ['', ''],
-                ['', ''],
-                ['', '']
-            ]
+            # ========================================
+            # SEÇÃO DE ASSINATURAS - LAYOUT PROFISSIONAL
+            # ========================================
             
-            signature_table = Table(signature_data, colWidths=[8*cm, 8*cm])
-            signature_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 11),
-                ('FONTSIZE', (0, 1), (-1, -1), 12),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('MINROWHEIGHT', (0, 1), (-1, -1), 25),
-            ]))
+            # Título da seção
+            assinaturas_title = ParagraphStyle(
+                'AssinaturasTitle',
+                parent=styles['Heading2'],
+                fontSize=14,
+                textColor=colors.black,
+                alignment=TA_CENTER,
+                spaceAfter=20,
+                fontName='Helvetica-Bold'
+            )
+            story.append(Paragraph("ASSINATURAS", assinaturas_title))
+            story.append(Spacer(1, 0.8*cm))
             
-            story.append(signature_table)
-            story.append(Spacer(1, 0.5*cm))
+            # ========================================
+            # ASSINATURA DO CLIENTE (Pessoa que Coletou)
+            # ========================================
             
-            # Documento de identificação
-            story.append(Paragraph("DOCUMENTO DE IDENTIFICAÇÃO", doc_style))
+            # Nome completo
+            cliente_nome_style = ParagraphStyle(
+                'ClienteNome',
+                parent=styles['Normal'],
+                fontSize=11,
+                textColor=colors.black,
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold',
+                spaceAfter=5
+            )
+            story.append(Paragraph(f"RETIRADO POR: {coleta_data.get('nome_retirada', 'N/A').upper()}", cliente_nome_style))
             
-            # Criar retângulo tracejado para documento
-            doc_drawing = Drawing(16*cm, 4*cm)
+            # Linha pontilhada para assinatura (mais larga e visível)
+            linha_assinatura = Drawing(12*cm, 1.5*cm)
+            linha_assinatura.add(Line(0, 0.75*cm, 12*cm, 0.75*cm, 
+                                     strokeColor=colors.black,
+                                     strokeWidth=1,
+                                     strokeDashArray=[3, 3]))
+            story.append(linha_assinatura)
             
-            # Retângulo tracejado
-            rect = Rect(0, 0, 16*cm, 4*cm)
+            # Texto "Assinatura" abaixo da linha
+            assinatura_label_style = ParagraphStyle(
+                'AssinaturaLabel',
+                parent=styles['Normal'],
+                fontSize=9,
+                textColor=colors.black,
+                alignment=TA_CENTER,
+                fontName='Helvetica',
+                spaceAfter=8
+            )
+            story.append(Paragraph("Assinatura do Cliente", assinatura_label_style))
+            
+            # CPF/Documento
+            doc_cliente_style = ParagraphStyle(
+                'DocCliente',
+                parent=styles['Normal'],
+                fontSize=10,
+                textColor=colors.black,
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold',
+                spaceAfter=8
+            )
+            story.append(Paragraph(f"CPF/RG: {coleta_data.get('documento_retirada', '_________________')}", doc_cliente_style))
+            
+            story.append(Spacer(1, 1.5*cm))
+            
+            # ========================================
+            # ASSINATURA DO FUNCIONÁRIO (Conferente)
+            # ========================================
+            
+            story.append(Paragraph(f"LIBERADO POR: {coleta_data.get('nome_conferente', 'N/A').upper()}", cliente_nome_style))
+            
+            # Linha pontilhada para assinatura
+            linha_funcionario = Drawing(12*cm, 1.5*cm)
+            linha_funcionario.add(Line(0, 0.75*cm, 12*cm, 0.75*cm,
+                                      strokeColor=colors.black,
+                                      strokeWidth=1,
+                                      strokeDashArray=[3, 3]))
+            story.append(linha_funcionario)
+            
+            # Texto "Assinatura" abaixo
+            story.append(Paragraph("Assinatura do Funcionário Responsável", assinatura_label_style))
+            
+            # CPF do conferente
+            story.append(Paragraph(f"CPF: {coleta_data.get('cpf_conferente', '_________________')}", doc_cliente_style))
+            
+            story.append(Spacer(1, 2*cm))
+            
+            # ========================================
+            # ÁREA PARA ANEXAR DOCUMENTO (MUITO MAIOR)
+            # ========================================
+            
+            # Título com instrução
+            doc_title_style = ParagraphStyle(
+                'DocTitle',
+                parent=styles['Normal'],
+                fontSize=12,
+                textColor=colors.black,
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold',
+                spaceAfter=10
+            )
+            story.append(Paragraph("⚠️ ANEXAR CÓPIA DO DOCUMENTO DE IDENTIFICAÇÃO ABAIXO ⚠️", doc_title_style))
+            
+            # Retângulo MUITO MAIOR para colar documento
+            doc_drawing = Drawing(16*cm, 7*cm)
+            
+            # Retângulo tracejado bem destacado
+            rect = Rect(0, 0, 16*cm, 7*cm)
             rect.strokeColor = colors.black
             rect.strokeWidth = 2
-            rect.strokeDashArray = [5, 5]
-            rect.fillColor = colors.white
+            rect.strokeDashArray = [8, 4]
+            rect.fillColor = colors.whitesmoke
             doc_drawing.add(rect)
             
+            # Texto dentro do retângulo
+            from reportlab.graphics.shapes import String
+            texto_centralizado = String(8*cm, 3.5*cm, 
+                                       "COLAR CÓPIA DO DOCUMENTO AQUI",
+                                       fontSize=16,
+                                       fillColor=colors.grey,
+                                       textAnchor='middle')
+            doc_drawing.add(texto_centralizado)
+            
+            # Moldura interna (guia visual)
+            moldura_interna = Rect(0.3*cm, 0.3*cm, 15.4*cm, 6.4*cm)
+            moldura_interna.strokeColor = colors.lightgrey
+            moldura_interna.strokeWidth = 1
+            moldura_interna.strokeDashArray = [3, 3]
+            moldura_interna.fillColor = None
+            doc_drawing.add(moldura_interna)
+            
             story.append(doc_drawing)
+            story.append(Spacer(1, 0.5*cm))
+            
+            # Rodapé com data/hora de emissão
+            rodape_style = ParagraphStyle(
+                'Rodape',
+                parent=styles['Normal'],
+                fontSize=8,
+                textColor=colors.grey,
+                alignment=TA_CENTER,
+                fontName='Helvetica'
+            )
+            data_emissao = datetime.now().strftime('%d/%m/%Y às %H:%M:%S')
+            story.append(Paragraph(f"Recibo emitido em {data_emissao} pelo Sistema SAP", rodape_style))
             
             # Construir PDF
             doc.build(story)
