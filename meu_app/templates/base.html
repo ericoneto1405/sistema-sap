@@ -4,6 +4,7 @@
     {% set csrf_token_value = csrf_token() %}
     <link rel="icon" href="{{ url_for('static', filename='images/logo_gerpedplus.png') }}">
     <link rel="stylesheet" href="{{ url_for("static", filename="style.css") }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
     <meta name="csrf-token" content="{{ csrf_token_value }}">
     <script nonce="{{ nonce }}">
         window.CSRF_TOKEN = "{{ csrf_token_value }}";
@@ -28,8 +29,17 @@
                 <span class="page-title">{% block page_title %}Dashboard{% endblock %}</span>
             </div>
             <div class="header-right">
+                <!-- Botão Dark Mode -->
+                <button id="dark-mode-toggle" class="dark-mode-btn" title="Alternar modo escuro">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 17.5a5.5 5.5 0 100-11 5.5 5.5 0 000 11zM12 2v3m0 14v3M4.22 4.22l2.12 2.12m11.32 11.32l2.12 2.12M2 12h3m14 0h3M4.22 19.78l2.12-2.12m11.32-11.32l2.12-2.12"/>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                    </svg>
+                </button>
                 
-                                <div class="user-info">
+                <div class="user-info">
                     {% if session.usuario_nome %}
                         <span>{{ session.usuario_nome }}</span>
                         <a href="{{ url_for('main.logout') }}" class="logout-btn">Sair</a>
@@ -219,5 +229,6 @@
     </script>
     
     <script nonce="{{ nonce }}" src="{{ url_for('static', filename='sidebar.js') }}"></script>
+    <script nonce="{{ nonce }}" src="{{ url_for('static', filename='dark-mode.js') }}"></script>
 </body>
 </html>

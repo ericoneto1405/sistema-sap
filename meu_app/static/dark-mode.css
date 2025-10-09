@@ -1,0 +1,347 @@
+/* ==========================================
+   MODO NOTURNO
+   ========================================== */
+
+/* Variáveis para Dark Mode */
+body.dark-mode {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border-color: #475569;
+    --accent-purple: #8b5cf6;
+    --accent-purple-light: #a78bfa;
+    --success-color: #10b981;
+    --danger-color: #f43f5e;
+    --warning-color: #fbbf24;
+    --info-color: #3b82f6;
+    --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-large: 0 10px 15px rgba(0, 0, 0, 0.6), 0 4px 6px rgba(0, 0, 0, 0.5);
+    --shadow-neomorph: 8px 8px 16px rgba(0, 0, 0, 0.3), -8px -8px 16px rgba(255, 255, 255, 0.03);
+    --shadow-neomorph-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.3), inset -4px -4px 8px rgba(255, 255, 255, 0.03);
+}
+
+/* Ajustes específicos para dark mode */
+body.dark-mode {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+body.dark-mode .header-logo {
+    filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%);
+}
+
+body.dark-mode .nav-text {
+    color: var(--text-secondary);
+}
+
+body.dark-mode table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+body.dark-mode .login-container {
+    background: var(--bg-primary);
+}
+
+body.dark-mode .login-card {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .login-card .logo {
+    filter: brightness(0) saturate(100%) invert(100%);
+}
+
+body.dark-mode .form-control,
+body.dark-mode input[type="text"],
+body.dark-mode input[type="email"],
+body.dark-mode input[type="password"],
+body.dark-mode input[type="number"],
+body.dark-mode input[type="date"],
+body.dark-mode select,
+body.dark-mode textarea {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+    border-color: var(--accent-purple);
+    background: var(--bg-tertiary);
+}
+
+/* Botão Dark Mode */
+.dark-mode-btn {
+    background: var(--bg-tertiary);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-small);
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: var(--shadow-neomorph);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+}
+
+.dark-mode-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.dark-mode-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Animação de troca de ícone */
+.dark-mode-btn.rotating {
+    animation: rotate 0.5s ease-in-out;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Transição suave */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode para badges */
+body.dark-mode .badge-success {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+body.dark-mode .badge-danger {
+    background: rgba(244, 63, 94, 0.2);
+    border-color: rgba(244, 63, 94, 0.4);
+}
+
+body.dark-mode .badge-warning {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: rgba(251, 191, 36, 0.4);
+}
+
+body.dark-mode .badge-info {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* Dark mode para KPI cards */
+body.dark-mode .kpi-card {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .kpi-card:hover {
+    border-color: var(--accent-purple);
+}
+
+/* Dark mode para thermometer */
+body.dark-mode .thermometer-container {
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+}
+
+/* Dark mode para modals */
+body.dark-mode .modal-content {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Dark mode para alertas */
+body.dark-mode .alert-danger {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.3);
+}
+
+body.dark-mode .alert-success {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+body.dark-mode .alert-warning {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+body.dark-mode .alert-info {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* Dark mode para dropdown */
+body.dark-mode .nav-item.dropdown .dropdown-menu {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .nav-item.dropdown .dropdown-item:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Dark mode para checkboxes */
+body.dark-mode .checkbox-label {
+    border-color: var(--border-color);
+    background: var(--bg-secondary);
+}
+
+body.dark-mode .checkbox-label:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-purple);
+}
+
+/* Dark mode para action cards */
+body.dark-mode .action-card {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .action-card:hover {
+    border-color: var(--accent-purple);
+}
+
+/* Dark mode para summary boxes */
+body.dark-mode .summary-box {
+    background: var(--bg-tertiary);
+}
+
+body.dark-mode .summary-box:hover {
+    background: var(--bg-secondary);
+}
+
+/* Dark mode para history items */
+body.dark-mode .history-item {
+    background: var(--bg-tertiary);
+}
+
+body.dark-mode .history-item:hover {
+    background: var(--bg-secondary);
+}
+
+/* Dark mode para empty state */
+body.dark-mode .empty-state {
+    color: var(--text-muted);
+}
+
+/* Dark mode para tabs */
+body.dark-mode .tabs-header {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .tab-btn {
+    color: var(--text-muted);
+}
+
+body.dark-mode .tab-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+body.dark-mode .tab-btn.active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Dark mode para notification system */
+body.dark-mode .notification-container .notification {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Dark mode para status badges */
+body.dark-mode .status-badge {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+body.dark-mode .quantity-badge {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Dark mode para product info */
+body.dark-mode .product-name {
+    color: var(--text-primary);
+}
+
+body.dark-mode .product-code {
+    color: var(--text-muted);
+}
+
+/* Dark mode para stat cards */
+body.dark-mode .stat-card {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+/* Dark mode para apuração */
+body.dark-mode .apuracao-container {
+    background: var(--bg-primary);
+}
+
+body.dark-mode .apuracao-header,
+body.dark-mode .selection-card,
+body.dark-mode .calculation-card,
+body.dark-mode .history-card {
+    background: var(--bg-secondary);
+}
+
+body.dark-mode .header-content h1,
+body.dark-mode .calculation-card h2,
+body.dark-mode .history-card h3 {
+    color: var(--text-primary);
+}
+
+body.dark-mode .header-content p {
+    color: var(--text-secondary);
+}
+
+/* Dark mode para OCR status (financeiro) */
+body.dark-mode #ocr-status-principal {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .validation-box {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .validation-success {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+body.dark-mode .validation-warning {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.4);
+}
+
+body.dark-mode .validation-info {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
