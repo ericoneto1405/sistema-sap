@@ -5,7 +5,10 @@
 {% block content %}
 <div class="page-header">
     <h2>📋 Todos os Pedidos</h2>
-    <a href="{{ url_for('pedidos.novo_pedido') }}" class="btn-primary">➕ Novo Pedido</a>
+    <div class="header-buttons">
+        <a href="{{ url_for('pedidos.importar_pedidos') }}" class="btn-secondary">📤 Importar Histórico</a>
+        <a href="{{ url_for('pedidos.novo_pedido') }}" class="btn-primary">➕ Novo Pedido</a>
+    </div>
 </div>
 
 <form method="get" style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
@@ -42,6 +45,11 @@
         margin-bottom: 20px;
     }
 
+    .header-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
     .btn-primary {
         background: var(--accent-purple);
         color: white;
@@ -55,6 +63,22 @@
 
     .btn-primary:hover {
         background: var(--accent-purple-light);
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
         transform: translateY(-1px);
     }
 

@@ -315,3 +315,155 @@ def visualizar_pedido(id):
         current_app.logger.error(f"Erro ao visualizar pedido: {str(e)}")
         flash("Erro ao carregar pedido", "error")
         return redirect(url_for("pedidos.listar_pedidos"))
+
+@pedidos_bp.route('/importar', methods=['GET', 'POST'])
+@login_obrigatorio
+@permissao_necessaria('acesso_pedidos')
+def importar_pedidos():
+    """Importa pedidos históricos de arquivo CSV ou Excel"""
+    if request.method == 'POST':
+        try:
+            # Verificar se um arquivo foi enviado
+            if 'arquivo' not in request.files:
+                flash('Nenhum arquivo foi selecionado', 'error')
+                return redirect(request.url)
+            
+            arquivo = request.files['arquivo']
+            
+            if arquivo.filename == '':
+                flash('Nenhum arquivo foi selecionado', 'error')
+                return redirect(request.url)
+            
+            # Verificar extensão do arquivo
+            extensao = arquivo.filename.rsplit('.', 1)[1].lower() if '.' in arquivo.filename else ''
+            if extensao not in ['csv', 'xlsx', 'xls']:
+                flash('Formato de arquivo inválido. Use CSV ou Excel (.xlsx, .xls)', 'error')
+                return redirect(request.url)
+            
+            # Processar arquivo
+            import pandas as pd
+            from io import BytesIO
+            
+            if extensao == 'csv':
+                df = pd.read_csv(BytesIO(arquivo.read()), encoding='utf-8')
+            else:
+                df = pd.read_excel(BytesIO(arquivo.read()))
+            
+            # Validar colunas necessárias
+            colunas_necessarias = ['cliente_id', 'produto_id', 'quantidade', 'preco_venda', 'data']
+            colunas_faltantes = [col for col in colunas_necessarias if col not in df.columns]
+            
+            if colunas_faltantes:
+                flash(f'Colunas faltantes no arquivo: {", ".join(colunas_faltantes)}', 'error')
+                return redirect(request.url)
+            
+            # Processar pedidos
+            pedidos_importados = 0
+            erros = []
+            
+            # Agrupar por pedido (assumindo que cada linha com mesma data e cliente é o mesmo pedido)
+            df['data'] = pd.to_datetime(df['data'])
+            
+            for (cliente_id, data), grupo in df.groupby(['cliente_id', 'data']):
+                try:
+                    # Validar cliente existe
+                    cliente = Cliente.query.get(int(cliente_id))
+                    if not cliente:
+                        erros.append(f'Cliente {cliente_id} não encontrado')
+                        continue
+                    
+                    # Criar pedido
+                    pedido = Pedido(
+                        cliente_id=int(cliente_id),
+                        data=data
+                    )
+                    db.session.add(pedido)
+                    db.session.flush()
+                    
+                    # Adicionar itens
+                    for _, item in grupo.iterrows():
+                        produto = Produto.query.get(int(item['produto_id']))
+                        if not produto:
+                            erros.append(f'Produto {item["produto_id"]} não encontrado')
+                            continue
+                        
+                        quantidade = int(item['quantidade'])
+                        preco_venda = float(item['preco_venda'])
+                        preco_compra = float(produto.preco_compra)
+                        
+                        item_pedido = ItemPedido(
+                            pedido_id=pedido.id,
+                            produto_id=produto.id,
+                            quantidade=quantidade,
+                            preco_venda=preco_venda,
+                            preco_compra=preco_compra,
+                            valor_total_venda=quantidade * preco_venda,
+                            valor_total_compra=quantidade * preco_compra,
+                            lucro_bruto=(quantidade * preco_venda) - (quantidade * preco_compra)
+                        )
+                        db.session.add(item_pedido)
+                    
+                    pedidos_importados += 1
+                    
+                except Exception as e:
+                    erros.append(f'Erro ao importar pedido (Cliente: {cliente_id}, Data: {data}): {str(e)}')
+                    db.session.rollback()
+                    continue
+            
+            # Salvar todas as alterações
+            db.session.commit()
+            
+            # Registrar atividade
+            log = LogAtividade(
+                usuario_nome=session.get('usuario_nome', 'Desconhecido'),
+                usuario_tipo=session.get('usuario_tipo', 'Desconhecido'),
+                modulo='Pedidos',
+                acao='Importação em massa',
+                detalhes=f'{pedidos_importados} pedidos importados',
+                timestamp=datetime.now()
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            current_app.logger.info(f"{pedidos_importados} pedidos importados por {session.get('usuario_nome', 'N/A')}")
+            
+            # Mostrar mensagem de resultado
+            if pedidos_importados > 0:
+                flash(f'{pedidos_importados} pedido(s) importado(s) com sucesso!', 'success')
+            
+            if erros:
+                flash(f'{len(erros)} erro(s) durante a importação. Verifique o log.', 'warning')
+                current_app.logger.warning(f'Erros na importação: {erros}')
+            
+            return redirect(url_for('pedidos.listar_pedidos'))
+            
+        except Exception as e:
+            current_app.logger.error(f"Erro ao importar pedidos: {str(e)}")
+            flash(f'Erro ao importar pedidos: {str(e)}', 'error')
+            db.session.rollback()
+            return redirect(request.url)
+    
+    # GET: Mostrar formulário de importação
+    return render_template('importar_pedidos.html')
+
+@pedidos_bp.route('/importar/exemplo')
+@login_obrigatorio
+@permissao_necessaria('acesso_pedidos')
+def download_exemplo():
+    """Baixa arquivo de exemplo para importação"""
+    from flask import send_file
+    import os
+    
+    arquivo_exemplo = os.path.join(current_app.root_path, '..', 'docs', 'EXEMPLO_IMPORTACAO_PEDIDOS.csv')
+    
+    try:
+        return send_file(
+            arquivo_exemplo,
+            as_attachment=True,
+            download_name='exemplo_importacao_pedidos.csv',
+            mimetype='text/csv'
+        )
+    except Exception as e:
+        current_app.logger.error(f"Erro ao baixar arquivo de exemplo: {str(e)}")
+        flash('Erro ao baixar arquivo de exemplo', 'error')
+        return redirect(url_for('pedidos.importar_pedidos'))
