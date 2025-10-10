@@ -1,6 +1,7 @@
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+from types import SimpleNamespace
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
 from sqlalchemy.exc import SQLAlchemyError
@@ -328,6 +329,8 @@ def visualizar_pedido(id):
 def importar_pedidos():
     """Importa pedidos históricos de arquivo CSV ou Excel"""
     resultado = session.pop('resultado_importacao_pedidos', None)
+    if isinstance(resultado, dict):
+        resultado = SimpleNamespace(**resultado)
 
     if request.method == 'POST':
         try:
@@ -436,7 +439,12 @@ def importar_pedidos():
             
             if not registros_validos:
                 flash('Nenhum registro válido encontrado. Corrija os erros apontados e tente novamente.', 'error')
-                session['resultado_importacao_pedidos'] = {'sucesso': 0, 'erros': erros}
+                session['resultado_importacao_pedidos'] = {
+                    'sucesso': 0,
+                    'erros': erros[:20],
+                    'total_erros': len(erros),
+                    'erros_truncados': len(erros) > 20
+                }
                 return redirect(url_for('pedidos.importar_pedidos'))
             
             pedidos_por_chave = defaultdict(list)
@@ -506,15 +514,21 @@ def importar_pedidos():
             
             if pedidos_importados > 0:
                 flash(f'{pedidos_importados} pedido(s) importados com sucesso.', 'success')
+                if erros:
+                    flash('Alguns registros apresentaram erro. Veja os detalhes abaixo.', 'warning')
+            elif erros:
+                flash('Nenhum pedido foi importado. Verifique os erros listados abaixo.', 'error')
+            
             if erros:
-                flash('Alguns registros apresentaram erro. Veja os detalhes abaixo.', 'warning')
                 current_app.logger.warning(f'Erros na importação de pedidos: {erros}')
             
             current_app.logger.info(f"{pedidos_importados} pedidos importados por {session.get('usuario_nome', 'N/A')}")
             
             session['resultado_importacao_pedidos'] = {
                 'sucesso': pedidos_importados,
-                'erros': erros
+                'erros': erros[:20],
+                'total_erros': len(erros),
+                'erros_truncados': len(erros) > 20
             }
             
             return redirect(url_for('pedidos.importar_pedidos'))

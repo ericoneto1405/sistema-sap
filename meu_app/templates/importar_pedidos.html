@@ -15,7 +15,10 @@
     </p>
     {% if resultado_importacao.erros %}
         <div class="import-errors">
-            <h4>⚠️ Erros encontrados ({{ resultado_importacao.erros|length }})</h4>
+            <h4>⚠️ Erros encontrados ({{ resultado_importacao.total_erros or resultado_importacao.erros|length }})</h4>
+            {% if resultado_importacao.erros_truncados %}
+            <p>Mostrando apenas os 20 primeiros erros.</p>
+            {% endif %}
             <ul>
                 {% for erro in resultado_importacao.erros %}
                     <li>{{ erro }}</li>
@@ -160,6 +163,11 @@
 
     .import-errors h4 {
         margin-bottom: 10px;
+        color: #c0392b;
+    }
+
+    .import-errors p {
+        margin: 5px 0 12px;
         color: #c0392b;
     }
 
