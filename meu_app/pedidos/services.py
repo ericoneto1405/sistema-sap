@@ -7,6 +7,10 @@ from flask import current_app, session
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime, timedelta
 import json
+from collections import defaultdict
+from decimal import Decimal, InvalidOperation
+import pandas as pd
+import unicodedata
 
 class PedidoService:
     """Serviço para operações relacionadas a pedidos"""
