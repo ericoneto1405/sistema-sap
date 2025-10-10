@@ -1,0 +1,265 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              TUTORIAL: COMO SUBSTITUIR OS IDs NO EXCEL/CSV                   ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Este tutorial mostra EXATAMENTE como fazer a substituição dos IDs temporários
+pelos IDs reais do seu sistema.
+
+═══════════════════════════════════════════════════════════════════════════════
+  MÉTODO 1: USANDO MICROSOFT EXCEL
+═══════════════════════════════════════════════════════════════════════════════
+
+PASSO 1: Abrir o arquivo
+────────────────────────
+  1. Clique com botão direito em: IMPORTACAO_PEDIDOS_HISTORICO.csv
+  2. Abrir com → Microsoft Excel
+  3. Se perguntar sobre delimitadores, escolha "vírgula"
+
+PASSO 2: Preparar tabela de mapeamento
+───────────────────────────────────────
+  Crie uma nova aba no Excel chamada "Mapeamento"
+  
+  Copie os dados dos arquivos:
+  - MAPEAMENTO_CLIENTES.txt
+  - MAPEAMENTO_PRODUTOS.txt
+  
+  Organize assim:
+  
+  ┌────────────┬──────────────────────────┬──────────┐
+  │ ID_TEMP    │ NOME                     │ ID_REAL  │
+  ├────────────┼──────────────────────────┼──────────┤
+  │ CLIENTES   │                          │          │
+  │ 1          │ FÁBIO OLIVEIRA           │ ?        │ ← anote aqui
+  │ 2          │ LUCIANO MOURA            │ ?        │
+  │ 3          │ Adailton                 │ ?        │
+  ├────────────┼──────────────────────────┼──────────┤
+  │ PRODUTOS   │                          │          │
+  │ 1          │ GUARANA ANTARCTICA 1L    │ ?        │
+  │ 2          │ AMSTEL LATA 350ML        │ ?        │
+  └────────────┴──────────────────────────┴──────────┘
+
+PASSO 3: Preencher os IDs reais
+────────────────────────────────
+  Para CADA linha da tabela:
+  
+  A) Para Clientes:
+     1. Acesse no sistema: Menu → Clientes → Listar
+     2. Localize o cliente pelo nome
+     3. Anote o ID (primeira coluna #)
+     4. Preencha na coluna ID_REAL
+  
+  B) Para Produtos:
+     1. Acesse no sistema: Menu → Produtos → Listar
+     2. Localize o produto pelo nome
+     3. Anote o ID (primeira coluna #)
+     4. Preencha na coluna ID_REAL
+
+PASSO 4: Substituir IDs de CLIENTES
+────────────────────────────────────
+  1. Volte para a aba do CSV
+  2. Pressione Ctrl+H (Localizar e Substituir)
+  
+  Para cada cliente na tabela de mapeamento:
+  
+  ┌─────────────────────────────────────────────────┐
+  │ Localizar:   ,1,                                │
+  │ Substituir:  ,25,  ← ID real do cliente 1      │
+  │                                                 │
+  │ [ ] Células inteiras                            │
+  │                                                 │
+  │         [Substituir Tudo]                       │
+  └─────────────────────────────────────────────────┘
+  
+  ⚠️  IMPORTANTE: Use as VÍRGULAS antes e depois!
+      Isso evita substituir números errados.
+  
+  Repita para TODOS os 14 clientes.
+
+PASSO 5: Substituir IDs de PRODUTOS
+────────────────────────────────────
+  Mesma coisa, mas agora para produtos:
+  
+  Exemplo:
+  - Produto ID temp 1 → ID real 102
+  
+  ⚠️  CUIDADO! Para produtos você precisa ser mais esperto:
+  
+  NÃO faça: ",1," → ",102,"  (isso pode substituir cliente também!)
+  
+  MELHOR: Depois de substituir TODOS os clientes, procure por:
+          "25,1," → "25,102,"  (ID cliente 25, produto 1 → produto 102)
+
+PASSO 6: Salvar o arquivo
+──────────────────────────
+  1. Arquivo → Salvar Como
+  2. Tipo: CSV (delimitado por vírgulas) (*.csv)
+  3. Nome: IMPORTACAO_PEDIDOS_AJUSTADO.csv
+  4. Clique em Salvar
+
+═══════════════════════════════════════════════════════════════════════════════
+  MÉTODO 2: USANDO LIBREOFFICE CALC
+═══════════════════════════════════════════════════════════════════════════════
+
+PASSO 1: Abrir o arquivo
+────────────────────────
+  1. Clique com botão direito em: IMPORTACAO_PEDIDOS_HISTORICO.csv
+  2. Abrir com → LibreOffice Calc
+  3. Na janela de importação:
+     - Conjunto de caracteres: Unicode (UTF-8)
+     - Separado por: Vírgula ☑
+     - Clique em OK
+
+PASSO 2-5: 
+───────────
+  Igual ao método do Excel acima
+  Use Ctrl+H para Localizar e Substituir
+
+PASSO 6: Salvar
+───────────────
+  1. Arquivo → Salvar Como
+  2. Tipo de arquivo: Texto CSV (.csv)
+  3. Marcar: ☑ Usar codificação Unicode (UTF-8)
+  4. Separador de campo: ,
+  5. Delimitador de texto: "
+  6. Salvar
+
+═══════════════════════════════════════════════════════════════════════════════
+  MÉTODO 3: USANDO GOOGLE SHEETS
+═══════════════════════════════════════════════════════════════════════════════
+
+PASSO 1: Upload do arquivo
+───────────────────────────
+  1. Acesse: drive.google.com
+  2. Clique em Novo → Upload de arquivo
+  3. Selecione: IMPORTACAO_PEDIDOS_HISTORICO.csv
+  4. Após upload, clique para abrir no Google Sheets
+
+PASSO 2-5:
+───────────
+  Use Ctrl+H (ou Editar → Localizar e substituir)
+  Siga os mesmos passos do Excel
+
+PASSO 6: Download
+─────────────────
+  1. Arquivo → Fazer download → Valores separados por vírgula (.csv)
+  2. Renomeie para: IMPORTACAO_PEDIDOS_AJUSTADO.csv
+
+═══════════════════════════════════════════════════════════════════════════════
+  MÉTODO 4: USANDO EDITOR DE TEXTO (AVANÇADO)
+═══════════════════════════════════════════════════════════════════════════════
+
+Para quem conhece expressões regulares ou quer mais controle:
+
+Usando VS Code, Sublime Text ou Notepad++:
+
+PASSO 1: Abrir arquivo
+──────────────────────
+  1. Clique com botão direito no CSV
+  2. Abrir com → VS Code (ou seu editor preferido)
+
+PASSO 2: Substituir com cuidado
+────────────────────────────────
+  1. Pressione Ctrl+H
+  2. Ative "Usar Expressão Regular" (ícone .*) se disponível
+  
+  Para clientes (mais seguro com regex):
+  Localizar: ^1,
+  Substituir: 25,
+  
+  Isso substitui "1," apenas no INÍCIO da linha (cliente)
+
+PASSO 3: Salvar
+───────────────
+  Ctrl+S
+
+═══════════════════════════════════════════════════════════════════════════════
+  EXEMPLO COMPLETO PASSO A PASSO
+═══════════════════════════════════════════════════════════════════════════════
+
+Cenário: Você verificou no sistema e tem:
+
+  CLIENTES:
+  - "KAIQUE ITATIM" (ID temp: 5) → ID REAL: 8
+  - "ATACADAI" (ID temp: 4) → ID REAL: 12
+
+  PRODUTOS:
+  - "SKOL LATA 350ML" (ID temp: 5) → ID REAL: 15
+  - "BRAHMA CHOPP LATA" (ID temp: 4) → ID REAL: 20
+
+Arquivo original tem a linha:
+  5,5,286,31,2025-04-29
+  ↑ ↑
+  | └─ produto ID temp 5
+  └─── cliente ID temp 5
+
+PASSO A PASSO:
+
+1️⃣  Substituir cliente 5 por 8:
+    Localizar: ,5,
+    Substituir: ,8,
+    Resultado: 8,5,286,31,2025-04-29
+
+2️⃣  Substituir cliente 4 por 12:
+    Localizar: ,4,
+    Substituir: ,12,
+    Resultado (outras linhas): 12,3,50,52,2025-04-29
+
+3️⃣  Agora os PRODUTOS - seja específico!
+    Localizar: 8,5,     (cliente 8, produto 5)
+    Substituir: 8,15,   (cliente 8, produto 15)
+    Resultado: 8,15,286,31,2025-04-29
+
+4️⃣  Substituir produto 4 por 20:
+    Localizar: ,4,      (produto 4)
+    Substituir: ,20,    (produto 20)
+    
+✅  Linha final: 8,15,286,31,2025-04-29
+
+═══════════════════════════════════════════════════════════════════════════════
+  ⚠️  ARMADILHAS COMUNS
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ ERRO 1: Substituir sem vírgulas
+   Localizar: 5
+   Substituir: 8
+   PROBLEMA: Vai substituir TODOS os "5" no arquivo (datas, preços, etc.)
+
+❌ ERRO 2: Ordem errada
+   Substituir produtos ANTES de clientes
+   PROBLEMA: Pode causar confusão nos IDs
+
+❌ ERRO 3: Esquecer de salvar como CSV
+   Salvar como .xlsx ou .xls
+   PROBLEMA: Sistema só aceita CSV
+
+❌ ERRO 4: Usar vírgula decimal
+   Preço: 25,50 em vez de 25.50
+   PROBLEMA: Sistema não vai importar corretamente
+
+✅ SOLUÇÃO: Siga a ordem e use vírgulas ao redor dos números!
+
+═══════════════════════════════════════════════════════════════════════════════
+  ✅ CHECKLIST DE VALIDAÇÃO
+═══════════════════════════════════════════════════════════════════════════════
+
+Antes de importar, verifique:
+
+□ Abri o CSV final e conferi visualmente algumas linhas
+□ Todos os clientes foram substituídos (procure por ,1, ,2, ,3, etc.)
+□ Todos os produtos foram substituídos
+□ Os preços estão com PONTO (não vírgula)
+□ As datas estão no formato YYYY-MM-DD
+□ O arquivo está salvo como .csv (não .xlsx)
+□ Fiz uma cópia de backup do arquivo original
+□ Testei com um arquivo pequeno primeiro
+
+═══════════════════════════════════════════════════════════════════════════════
+
+  Pronto! Agora você pode importar o arquivo ajustado! 🚀
+
+  Acesse: Menu → Pedidos → Importar Histórico
+
+═══════════════════════════════════════════════════════════════════════════════
+
