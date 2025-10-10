@@ -40,33 +40,31 @@
             <h4>📊 Formato do Arquivo</h4>
             <p>O arquivo pode ser CSV ou Excel (.xlsx, .xls) e deve conter as seguintes colunas:</p>
             <ul>
-                <li><strong>cliente_id</strong>: ID do cliente no sistema <span class="help-text">(veja em Clientes → Listar)</span></li>
-                <li><strong>produto_id</strong>: ID do produto no sistema <span class="help-text">(veja em Produtos → Listar)</span></li>
+                <li><strong>cliente_nome</strong>: Nome do cliente exatamente como está cadastrado</li>
+                <li><strong>produto_nome</strong>: Nome do produto exatamente como está cadastrado</li>
                 <li><strong>quantidade</strong>: Quantidade do produto <span class="help-text">(número inteiro)</span></li>
                 <li><strong>preco_venda</strong>: Preço de venda unitário <span class="help-text">(use ponto: 25.50)</span></li>
                 <li><strong>data</strong>: Data do pedido <span class="help-text">(formato: YYYY-MM-DD ou DD/MM/YYYY)</span></li>
             </ul>
             <div class="alert-info">
-                <strong>⚠️ Atenção:</strong> Os IDs de clientes e produtos no arquivo devem corresponder aos IDs 
-                cadastrados no sistema. Acesse as respectivas páginas de listagem para verificar os IDs corretos 
-                antes de preparar seu arquivo.
+                <strong>⚠️ Atenção:</strong> Use os nomes exatamente como aparecem nas telas de Clientes e Produtos. 
+                O sistema tenta ignorar acentos e diferenças de maiúsculas/minúsculas, mas nomes duplicados causarão erros.
             </div>
         </div>
 
         <div class="instruction-section">
             <h4>📝 Exemplo de Arquivo CSV</h4>
             <div class="code-block">
-                <pre>cliente_id,produto_id,quantidade,preco_venda,data
-1,1,10,25.50,2024-01-15
-1,2,5,15.00,2024-01-15
-2,1,20,8.75,2024-01-16
-3,2,15,25.50,2024-01-17</pre>
+                <pre>cliente_nome,produto_nome,quantidade,preco_venda,data
+KAIQUE ITATIM,SKOL LATA 350ML,286,31.00,2024-01-15
+KAIQUE ITATIM,BRAHMA CHOPP LATA 350 ML,286,32.00,2024-01-15
+LUCIANO MOURA,RED BULL ENERGY DRINK 250 ML,144,150.00,16/01/2024
+LUCIANO MOURA,BUDWEISER LATA 350ML,280,37.00,16/01/2024</pre>
             </div>
             <p class="example-explanation">
                 <strong>Como interpretar:</strong><br>
-                • Linha 2-3: Cliente #1 pediu 2 produtos diferentes no mesmo dia → <strong>1 pedido com 2 itens</strong><br>
-                • Linha 4: Cliente #2 pediu 1 produto → <strong>1 pedido com 1 item</strong><br>
-                • Linha 5: Cliente #3 pediu 1 produto → <strong>1 pedido com 1 item</strong>
+                • Linhas 2-3: Cliente "KAIQUE ITATIM" pediu 2 produtos no mesmo dia → <strong>1 pedido com 2 itens</strong><br>
+                • Linhas 4-5: Cliente "LUCIANO MOURA" pediu 2 produtos no mesmo dia → <strong>1 pedido com 2 itens</strong>
             </p>
             <div class="download-example">
                 <a href="{{ url_for('pedidos.download_exemplo') }}" class="btn-download">
@@ -76,16 +74,16 @@
                     Baixar Arquivo de Exemplo
                 </a>
             </div>
-            <p class="note">💡 <strong>Nota:</strong> Linhas com mesma data e cliente serão agrupadas em um único pedido. Lembre-se de substituir os IDs de exemplo pelos IDs reais do seu sistema!</p>
+            <p class="note">💡 <strong>Nota:</strong> Linhas com mesma data e cliente serão agrupadas em um único pedido. Copie/cole os nomes direto do sistema para evitar erros de digitação.</p>
         </div>
 
         <div class="instruction-section">
             <h4>⚠️ Importante</h4>
             <ul>
-                <li><strong>Antes de começar:</strong> Verifique os IDs reais de clientes e produtos acessando:
+                <li><strong>Antes de começar:</strong> Copie os nomes exatos nas telas:
                     <ul style="margin-top: 8px; margin-bottom: 8px;">
-                        <li>Menu → Clientes → Listar (para ver IDs de clientes)</li>
-                        <li>Menu → Produtos → Listar (para ver IDs de produtos)</li>
+                        <li>Menu → Clientes → Listar</li>
+                        <li>Menu → Produtos → Listar</li>
                     </ul>
                 </li>
                 <li>Use <strong>ponto (.)</strong> como separador decimal nos preços: 25.50 (não vírgula)</li>

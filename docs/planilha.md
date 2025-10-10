@@ -6,33 +6,33 @@ Use este guia para montar o arquivo CSV ou Excel antes de fazer o upload no modu
 
 O arquivo deve conter exatamente as colunas abaixo (nomes em letras minusculas, sem acentos):
 
-| coluna       | descricao                                                                 | exemplo          |
-|--------------|----------------------------------------------------------------------------|------------------|
-| cliente_id   | ID cadastrado do cliente (consulte em Clientes -> Listar)                 | 12               |
-| produto_id   | ID cadastrado do produto (consulte em Produtos -> Listar)                 | 45               |
-| quantidade   | Quantidade inteira vendida                                                | 120              |
-| preco_venda  | Preco unitario de venda (use ponto como separador decimal)                | 32.50            |
-| data         | Data do pedido (YYYY-MM-DD ou DD/MM/YYYY)                                 | 2025-04-29       |
+| coluna        | descricao                                                                 | exemplo                         |
+|---------------|----------------------------------------------------------------------------|---------------------------------|
+| cliente_nome  | Nome do cliente exatamente como aparece na tela de Clientes               | KAIQUE ITATIM                   |
+| produto_nome  | Nome do produto exatamente como aparece na tela de Produtos               | SKOL LATA 350ML                 |
+| quantidade    | Quantidade inteira vendida                                                | 120                             |
+| preco_venda   | Preco unitario de venda (use ponto como separador decimal)                | 32.50                           |
+| data          | Data do pedido (YYYY-MM-DD ou DD/MM/YYYY)                                 | 2025-04-29                      |
 
 **Importante**
-- Cada linha representa um item. Linhas com o mesmo `cliente_id` e a mesma `data` sao combinadas em um unico pedido com varios itens.
-- Preencha somente com IDs reais que ja existem no sistema.
+    - Cada linha representa um item. Linhas com o mesmo `cliente_nome` e a mesma `data` sao combinadas em um unico pedido com varios itens.
+- Utilize nomes exatamente iguais aos cadastrados (o sistema ignora maiusculas/minusculas e acentos, mas nomes duplicados geram erro).
 - Evite formulas ou celulas mescladas. Salve o arquivo final como CSV ou XLSX.
 
 ## Exemplo pronto (CSV)
 
 ```
-cliente_id,produto_id,quantidade,preco_venda,data
-8,21,84,40.00,2025-04-29
-8,32,560,32.50,29/04/2025
-15,21,168,40.00,2025-04-29
+cliente_nome,produto_nome,quantidade,preco_venda,data
+KAIQUE ITATIM,SKOL LATA 350ML,286,31.00,2025-04-29
+KAIQUE ITATIM,BRAHMA CHOPP LATA 350 ML,286,32.00,29/04/2025
+LUCIANO MOURA,RED BULL ENERGY DRINK 250 ML,144,150.00,2025-04-30
 ```
 
-No exemplo acima, o cliente 8 gera dois pedidos diferentes porque as datas de cada linha sao diferentes. No segundo pedido (data 29/04/2025) existem dois itens: produto 21 e produto 32.
+No exemplo acima, o cliente "KAIQUE ITATIM" gera um pedido com dois itens (mesma data) e o cliente "LUCIANO MOURA" gera outro pedido com um item.
 
 ## Checklist rapido antes do upload
 
-- [ ] Conferi se todos os clientes/produtos existem no sistema.
+- [ ] Copiei os nomes direto das telas de Clientes e Produtos para evitar erros de digitacao.
 - [ ] Usei ponto (.) como separador decimal no `preco_venda`.
 - [ ] Conferi se todas as datas estao em um formato valido (YYYY-MM-DD ou DD/MM/YYYY).
 - [ ] Exportei/salvei o arquivo como CSV, XLSX ou XLS antes de enviar.

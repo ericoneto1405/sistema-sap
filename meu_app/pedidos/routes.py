@@ -1,3 +1,4 @@
+import unicodedata
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -11,6 +12,15 @@ from meu_app.pedidos.services import PedidoService
 from meu_app.decorators import login_obrigatorio, permissao_necessaria
 
 pedidos_bp = Blueprint('pedidos', __name__, url_prefix='/pedidos')
+
+
+def normalizar_nome(valor):
+    """Remove acentos e padroniza nomes para busca case-insensitive."""
+    if valor is None:
+        return ''
+    ascii_safe = unicodedata.normalize('NFKD', str(valor)).encode('ASCII', 'ignore').decode('ASCII')
+    return ascii_safe.strip().lower()
+
 
 @pedidos_bp.route('/', methods=['GET'])
 @login_obrigatorio
@@ -369,7 +379,7 @@ def importar_pedidos():
                 return redirect(url_for('pedidos.importar_pedidos'))
             
             df.columns = [str(col).strip().lower() for col in df.columns]
-            colunas_necessarias = ['cliente_id', 'produto_id', 'quantidade', 'preco_venda', 'data']
+            colunas_necessarias = ['cliente_nome', 'produto_nome', 'quantidade', 'preco_venda', 'data']
             colunas_faltantes = [col for col in colunas_necessarias if col not in df.columns]
             
             if colunas_faltantes:
@@ -379,8 +389,22 @@ def importar_pedidos():
             df = df[colunas_necessarias].copy()
             df['linha_planilha'] = df.index + 2  # Considera cabeçalho na linha 1
             
+            clientes_map = defaultdict(list)
+            for cliente in Cliente.query.order_by(Cliente.nome).all():
+                clientes_map[normalizar_nome(cliente.nome)].append(cliente)
+            
+            produtos_map = defaultdict(list)
+            for produto in Produto.query.order_by(Produto.nome).all():
+                produtos_map[normalizar_nome(produto.nome)].append(produto)
+            
             erros = []
             registros_validos = []
+            
+            def _parse_texto(valor, coluna, linha):
+                if pd.isna(valor) or str(valor).strip() == '':
+                    erros.append(f"Linha {linha}: campo '{coluna}' está vazio.")
+                    return None
+                return str(valor).strip()
             
             def _parse_inteiro(valor, coluna, linha, minimo=None):
                 if pd.isna(valor) or str(valor).strip() == '':
@@ -419,19 +443,49 @@ def importar_pedidos():
             
             for _, row in df.iterrows():
                 linha = int(row['linha_planilha'])
-                cliente_id = _parse_inteiro(row['cliente_id'], 'cliente_id', linha)
-                produto_id = _parse_inteiro(row['produto_id'], 'produto_id', linha)
+                cliente_nome_planilha = _parse_texto(row['cliente_nome'], 'cliente_nome', linha)
+                produto_nome_planilha = _parse_texto(row['produto_nome'], 'produto_nome', linha)
                 quantidade = _parse_inteiro(row['quantidade'], 'quantidade', linha, minimo=1)
                 preco_venda = _parse_decimal(row['preco_venda'], 'preco_venda', linha)
                 data = _parse_data(row['data'], linha)
                 
-                if None in (cliente_id, produto_id, quantidade, preco_venda, data):
+                if None in (cliente_nome_planilha, produto_nome_planilha, quantidade, preco_venda, data):
                     continue
+                
+                cliente_key = normalizar_nome(cliente_nome_planilha)
+                cliente_lista = clientes_map.get(cliente_key, [])
+                if not cliente_lista:
+                    erros.append(f'Linha {linha}: cliente "{cliente_nome_planilha}" não foi encontrado no sistema.')
+                    continue
+                if len(cliente_lista) > 1:
+                    nomes_ids = ', '.join(str(cli.id) for cli in cliente_lista)
+                    erros.append(
+                        f'Linha {linha}: há mais de um cliente com o nome "{cliente_nome_planilha}" (IDs: {nomes_ids}). '
+                        'Ajuste o nome para ficar único.'
+                    )
+                    continue
+                cliente = cliente_lista[0]
+                
+                produto_key = normalizar_nome(produto_nome_planilha)
+                produto_lista = produtos_map.get(produto_key, [])
+                if not produto_lista:
+                    erros.append(f'Linha {linha}: produto "{produto_nome_planilha}" não foi encontrado no sistema.')
+                    continue
+                if len(produto_lista) > 1:
+                    nomes_ids = ', '.join(str(prod.id) for prod in produto_lista)
+                    erros.append(
+                        f'Linha {linha}: há mais de um produto com o nome "{produto_nome_planilha}" (IDs: {nomes_ids}). '
+                        'Ajuste o nome para ficar único.'
+                    )
+                    continue
+                produto = produto_lista[0]
                 
                 registros_validos.append({
                     'linha': linha,
-                    'cliente_id': cliente_id,
-                    'produto_id': produto_id,
+                    'cliente': cliente,
+                    'cliente_nome_planilha': cliente_nome_planilha,
+                    'produto': produto,
+                    'produto_nome_planilha': produto_nome_planilha,
                     'quantidade': quantidade,
                     'preco_venda': preco_venda,
                     'data': data
@@ -449,26 +503,19 @@ def importar_pedidos():
             
             pedidos_por_chave = defaultdict(list)
             for registro in registros_validos:
-                chave = (registro['cliente_id'], registro['data'])
+                chave = (registro['cliente'].id, registro['data'])
                 pedidos_por_chave[chave].append(registro)
             
             pedidos_importados = 0
             
             for (cliente_id, data), itens in pedidos_por_chave.items():
-                cliente = Cliente.query.get(cliente_id)
-                if not cliente:
-                    linhas_relacionadas = ', '.join(str(item['linha']) for item in itens)
-                    erros.append(f"Cliente ID {cliente_id} não encontrado (linhas {linhas_relacionadas}).")
-                    continue
+                cliente = itens[0]['cliente']
                 
                 pedido = Pedido(cliente_id=cliente_id, data=data)
                 itens_validos = 0
                 
                 for item in itens:
-                    produto = Produto.query.get(item['produto_id'])
-                    if not produto:
-                        erros.append(f"Linha {item['linha']}: produto ID {item['produto_id']} não existe.")
-                        continue
+                    produto = item['produto']
                     
                     preco_compra = Decimal(str(getattr(produto, 'preco_medio_compra', 0) or 0))
                     quantidade = item['quantidade']
@@ -490,7 +537,7 @@ def importar_pedidos():
                 
                 if itens_validos == 0:
                     erros.append(
-                        f"Pedido do cliente ID {cliente_id} em {data.strftime('%d/%m/%Y')} ignorado: nenhum item válido."
+                        f'Pedido do cliente "{cliente.nome}" em {data.strftime("%d/%m/%Y")} ignorado: nenhum item válido.'
                     )
                     continue
                 
