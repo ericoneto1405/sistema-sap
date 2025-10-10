@@ -31,7 +31,9 @@ class FileUploadValidator:
         'excel': [
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',  # .xlsx
             'application/vnd.ms-excel',  # .xls
-            'application/vnd.oasis.opendocument.spreadsheet'  # .ods
+            'application/vnd.oasis.opendocument.spreadsheet',  # .ods
+            'application/zip'  # .xlsx são arquivos ZIP comprimidos
+            # application/octet-stream é tratado com validação especial de assinatura
         ],
         'csv': [
             'text/csv',
@@ -107,7 +109,26 @@ class FileUploadValidator:
             file_mime = magic.from_buffer(file.read(1024), mime=True)
             file.seek(0)  # Voltar ao início do arquivo
             
-            if file_mime not in cls.ALLOWED_MIME_TYPES[file_type]:
+            # Validação especial para arquivos Excel com MIME genérico
+            if file_type == 'excel' and file_mime == 'application/octet-stream':
+                # Verificar se é realmente um arquivo Excel lendo a assinatura
+                file_header = file.read(8)
+                file.seek(0)
+                
+                # Assinaturas de arquivo Excel/ZIP (xlsx é um arquivo ZIP)
+                # PK\x03\x04 = ZIP (usado por .xlsx)
+                # \xd0\xcf\x11\xe0 = OLE2 (usado por .xls antigo)
+                is_valid_excel = (
+                    file_header.startswith(b'PK\x03\x04') or  # .xlsx (ZIP)
+                    file_header.startswith(b'\xd0\xcf\x11\xe0')  # .xls (OLE2)
+                )
+                
+                if not is_valid_excel:
+                    return False, f"Arquivo não é um Excel válido. Tipo detectado: {file_mime}", None
+                
+                current_app.logger.info(f"Arquivo Excel validado por assinatura (MIME genérico)")
+            
+            elif file_mime not in cls.ALLOWED_MIME_TYPES[file_type]:
                 return False, f"Tipo de arquivo não permitido. Tipo detectado: {file_mime}", None
             
             # Verificar se o arquivo não está vazio
