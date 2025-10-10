@@ -16,12 +16,17 @@
             <h4>📊 Formato do Arquivo</h4>
             <p>O arquivo pode ser CSV ou Excel (.xlsx, .xls) e deve conter as seguintes colunas:</p>
             <ul>
-                <li><strong>cliente_id</strong>: ID do cliente no sistema</li>
-                <li><strong>produto_id</strong>: ID do produto no sistema</li>
-                <li><strong>quantidade</strong>: Quantidade do produto</li>
-                <li><strong>preco_venda</strong>: Preço de venda unitário</li>
-                <li><strong>data</strong>: Data do pedido (formato: YYYY-MM-DD ou DD/MM/YYYY)</li>
+                <li><strong>cliente_id</strong>: ID do cliente no sistema <span class="help-text">(veja em Clientes → Listar)</span></li>
+                <li><strong>produto_id</strong>: ID do produto no sistema <span class="help-text">(veja em Produtos → Listar)</span></li>
+                <li><strong>quantidade</strong>: Quantidade do produto <span class="help-text">(número inteiro)</span></li>
+                <li><strong>preco_venda</strong>: Preço de venda unitário <span class="help-text">(use ponto: 25.50)</span></li>
+                <li><strong>data</strong>: Data do pedido <span class="help-text">(formato: YYYY-MM-DD ou DD/MM/YYYY)</span></li>
             </ul>
+            <div class="alert-info">
+                <strong>⚠️ Atenção:</strong> Os IDs de clientes e produtos no arquivo devem corresponder aos IDs 
+                cadastrados no sistema. Acesse as respectivas páginas de listagem para verificar os IDs corretos 
+                antes de preparar seu arquivo.
+            </div>
         </div>
 
         <div class="instruction-section">
@@ -369,6 +374,29 @@
         width: 20px;
         height: 20px;
         fill: currentColor;
+    }
+
+    .help-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-style: italic;
+    }
+
+    .alert-info {
+        background: #d1ecf1;
+        border-left: 4px solid #0c5460;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 15px;
+        color: #0c5460;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .alert-info strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 1rem;
     }
 </style>
 
