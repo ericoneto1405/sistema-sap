@@ -112,3 +112,27 @@ def buscar_cliente():
         })
     
     return jsonify({'clientes': resultados})
+
+@vendedor_bp.route('/api/clientes-por-periodo/<periodo>')
+@login_obrigatorio
+@permissao_necessaria('acesso_clientes')
+def api_clientes_por_periodo(periodo):
+    """API para buscar clientes por período"""
+    clientes = VendedorService.get_clientes_por_periodo(periodo)
+    return jsonify({'clientes': clientes})
+
+@vendedor_bp.route('/api/cliente/<int:cliente_id>/pedidos')
+@login_obrigatorio
+@permissao_necessaria('acesso_clientes')
+def api_pedidos_cliente(cliente_id):
+    """API para buscar pedidos de um cliente"""
+    pedidos = VendedorService.get_pedidos_cliente(cliente_id)
+    return jsonify({'pedidos': pedidos})
+
+@vendedor_bp.route('/api/cliente/<int:cliente_id>/produtos')
+@login_obrigatorio
+@permissao_necessaria('acesso_clientes')
+def api_produtos_cliente(cliente_id):
+    """API para buscar produtos compilados de um cliente"""
+    produtos = VendedorService.get_produtos_cliente(cliente_id)
+    return jsonify({'produtos': produtos})
