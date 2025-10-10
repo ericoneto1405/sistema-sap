@@ -1,5 +1,11 @@
+from collections import defaultdict
+from decimal import Decimal, InvalidOperation
+from io import BytesIO
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
-from meu_app.models import Pedido, Cliente, Produto, db
+from sqlalchemy.exc import SQLAlchemyError
+
+from meu_app.models import Pedido, Cliente, Produto, ItemPedido, db
 from meu_app.pedidos.services import PedidoService
 from meu_app.decorators import login_obrigatorio, permissao_necessaria
 
@@ -321,130 +327,215 @@ def visualizar_pedido(id):
 @permissao_necessaria('acesso_pedidos')
 def importar_pedidos():
     """Importa pedidos históricos de arquivo CSV ou Excel"""
+    resultado = session.pop('resultado_importacao_pedidos', None)
+
     if request.method == 'POST':
         try:
             # Verificar se um arquivo foi enviado
             if 'arquivo' not in request.files:
-                flash('Nenhum arquivo foi selecionado', 'error')
-                return redirect(request.url)
+                flash('Nenhum arquivo foi selecionado.', 'error')
+                return redirect(url_for('pedidos.importar_pedidos'))
             
             arquivo = request.files['arquivo']
             
             if arquivo.filename == '':
-                flash('Nenhum arquivo foi selecionado', 'error')
-                return redirect(request.url)
+                flash('Nenhum arquivo foi selecionado.', 'error')
+                return redirect(url_for('pedidos.importar_pedidos'))
             
             # Verificar extensão do arquivo
             extensao = arquivo.filename.rsplit('.', 1)[1].lower() if '.' in arquivo.filename else ''
             if extensao not in ['csv', 'xlsx', 'xls']:
-                flash('Formato de arquivo inválido. Use CSV ou Excel (.xlsx, .xls)', 'error')
-                return redirect(request.url)
+                flash('Formato de arquivo inválido. Use CSV ou Excel (.xlsx, .xls).', 'error')
+                return redirect(url_for('pedidos.importar_pedidos'))
             
             # Processar arquivo
             import pandas as pd
-            from io import BytesIO
+            
+            conteudo = arquivo.read()
+            if not conteudo:
+                flash('O arquivo enviado está vazio.', 'error')
+                return redirect(url_for('pedidos.importar_pedidos'))
             
             if extensao == 'csv':
-                df = pd.read_csv(BytesIO(arquivo.read()), encoding='utf-8')
+                df = pd.read_csv(BytesIO(conteudo))
             else:
-                df = pd.read_excel(BytesIO(arquivo.read()))
+                df = pd.read_excel(BytesIO(conteudo))
             
-            # Validar colunas necessárias
+            if df.empty:
+                flash('O arquivo não contém linhas para importar.', 'warning')
+                return redirect(url_for('pedidos.importar_pedidos'))
+            
+            df.columns = [str(col).strip().lower() for col in df.columns]
             colunas_necessarias = ['cliente_id', 'produto_id', 'quantidade', 'preco_venda', 'data']
             colunas_faltantes = [col for col in colunas_necessarias if col not in df.columns]
             
             if colunas_faltantes:
-                flash(f'Colunas faltantes no arquivo: {", ".join(colunas_faltantes)}', 'error')
-                return redirect(request.url)
+                flash(f'Colunas faltantes no arquivo: {", ".join(colunas_faltantes)}.', 'error')
+                return redirect(url_for('pedidos.importar_pedidos'))
             
-            # Processar pedidos
-            pedidos_importados = 0
+            df = df[colunas_necessarias].copy()
+            df['linha_planilha'] = df.index + 2  # Considera cabeçalho na linha 1
+            
             erros = []
+            registros_validos = []
             
-            # Agrupar por pedido (assumindo que cada linha com mesma data e cliente é o mesmo pedido)
-            df['data'] = pd.to_datetime(df['data'])
-            
-            for (cliente_id, data), grupo in df.groupby(['cliente_id', 'data']):
+            def _parse_inteiro(valor, coluna, linha, minimo=None):
+                if pd.isna(valor) or str(valor).strip() == '':
+                    erros.append(f"Linha {linha}: campo '{coluna}' está vazio.")
+                    return None
                 try:
-                    # Validar cliente existe
-                    cliente = Cliente.query.get(int(cliente_id))
-                    if not cliente:
-                        erros.append(f'Cliente {cliente_id} não encontrado')
+                    numero = int(Decimal(str(valor).strip()))
+                except (ValueError, InvalidOperation):
+                    erros.append(f"Linha {linha}: campo '{coluna}' precisa ser um número inteiro.")
+                    return None
+                if minimo is not None and numero < minimo:
+                    erros.append(f"Linha {linha}: campo '{coluna}' deve ser maior ou igual a {minimo}.")
+                    return None
+                return numero
+            
+            def _parse_decimal(valor, coluna, linha):
+                if pd.isna(valor) or str(valor).strip() == '':
+                    erros.append(f"Linha {linha}: campo '{coluna}' está vazio.")
+                    return None
+                valor_str = str(valor).strip().replace('R$', '').replace(' ', '').replace(',', '.')
+                try:
+                    return Decimal(valor_str)
+                except (ValueError, InvalidOperation):
+                    erros.append(f"Linha {linha}: campo '{coluna}' possui valor inválido: {valor}.")
+                    return None
+            
+            def _parse_data(valor, linha):
+                if pd.isna(valor) or str(valor).strip() == '':
+                    erros.append(f"Linha {linha}: campo 'data' está vazio.")
+                    return None
+                data_convertida = pd.to_datetime(valor, errors='coerce', dayfirst=True)
+                if pd.isna(data_convertida):
+                    erros.append(f"Linha {linha}: data inválida '{valor}'. Use formatos YYYY-MM-DD ou DD/MM/YYYY.")
+                    return None
+                return data_convertida.to_pydatetime()
+            
+            for _, row in df.iterrows():
+                linha = int(row['linha_planilha'])
+                cliente_id = _parse_inteiro(row['cliente_id'], 'cliente_id', linha)
+                produto_id = _parse_inteiro(row['produto_id'], 'produto_id', linha)
+                quantidade = _parse_inteiro(row['quantidade'], 'quantidade', linha, minimo=1)
+                preco_venda = _parse_decimal(row['preco_venda'], 'preco_venda', linha)
+                data = _parse_data(row['data'], linha)
+                
+                if None in (cliente_id, produto_id, quantidade, preco_venda, data):
+                    continue
+                
+                registros_validos.append({
+                    'linha': linha,
+                    'cliente_id': cliente_id,
+                    'produto_id': produto_id,
+                    'quantidade': quantidade,
+                    'preco_venda': preco_venda,
+                    'data': data
+                })
+            
+            if not registros_validos:
+                flash('Nenhum registro válido encontrado. Corrija os erros apontados e tente novamente.', 'error')
+                session['resultado_importacao_pedidos'] = {'sucesso': 0, 'erros': erros}
+                return redirect(url_for('pedidos.importar_pedidos'))
+            
+            pedidos_por_chave = defaultdict(list)
+            for registro in registros_validos:
+                chave = (registro['cliente_id'], registro['data'])
+                pedidos_por_chave[chave].append(registro)
+            
+            pedidos_importados = 0
+            
+            for (cliente_id, data), itens in pedidos_por_chave.items():
+                cliente = Cliente.query.get(cliente_id)
+                if not cliente:
+                    linhas_relacionadas = ', '.join(str(item['linha']) for item in itens)
+                    erros.append(f"Cliente ID {cliente_id} não encontrado (linhas {linhas_relacionadas}).")
+                    continue
+                
+                pedido = Pedido(cliente_id=cliente_id, data=data)
+                itens_validos = 0
+                
+                for item in itens:
+                    produto = Produto.query.get(item['produto_id'])
+                    if not produto:
+                        erros.append(f"Linha {item['linha']}: produto ID {item['produto_id']} não existe.")
                         continue
                     
-                    # Criar pedido
-                    pedido = Pedido(
-                        cliente_id=int(cliente_id),
-                        data=data
+                    preco_compra = Decimal(str(getattr(produto, 'preco_medio_compra', 0) or 0))
+                    quantidade = item['quantidade']
+                    preco_venda = item['preco_venda']
+                    valor_total_venda = preco_venda * quantidade
+                    valor_total_compra = preco_compra * quantidade
+                    lucro_bruto = valor_total_venda - valor_total_compra
+                    
+                    pedido.itens.append(ItemPedido(
+                        produto_id=produto.id,
+                        quantidade=quantidade,
+                        preco_venda=preco_venda,
+                        preco_compra=preco_compra,
+                        valor_total_venda=valor_total_venda,
+                        valor_total_compra=valor_total_compra,
+                        lucro_bruto=lucro_bruto
+                    ))
+                    itens_validos += 1
+                
+                if itens_validos == 0:
+                    erros.append(
+                        f"Pedido do cliente ID {cliente_id} em {data.strftime('%d/%m/%Y')} ignorado: nenhum item válido."
                     )
-                    db.session.add(pedido)
-                    db.session.flush()
-                    
-                    # Adicionar itens
-                    for _, item in grupo.iterrows():
-                        produto = Produto.query.get(int(item['produto_id']))
-                        if not produto:
-                            erros.append(f'Produto {item["produto_id"]} não encontrado')
-                            continue
-                        
-                        quantidade = int(item['quantidade'])
-                        preco_venda = float(item['preco_venda'])
-                        preco_compra = float(produto.preco_compra)
-                        
-                        item_pedido = ItemPedido(
-                            pedido_id=pedido.id,
-                            produto_id=produto.id,
-                            quantidade=quantidade,
-                            preco_venda=preco_venda,
-                            preco_compra=preco_compra,
-                            valor_total_venda=quantidade * preco_venda,
-                            valor_total_compra=quantidade * preco_compra,
-                            lucro_bruto=(quantidade * preco_venda) - (quantidade * preco_compra)
-                        )
-                        db.session.add(item_pedido)
-                    
-                    pedidos_importados += 1
-                    
-                except Exception as e:
-                    erros.append(f'Erro ao importar pedido (Cliente: {cliente_id}, Data: {data}): {str(e)}')
-                    db.session.rollback()
                     continue
+                
+                db.session.add(pedido)
+                pedidos_importados += 1
             
-            # Salvar todas as alterações
-            db.session.commit()
+            if pedidos_importados == 0:
+                db.session.rollback()
+            else:
+                db.session.commit()
+                PedidoService._registrar_atividade(
+                    'importacao',
+                    'Importação de pedidos históricos',
+                    f'{pedidos_importados} pedido(s) importado(s) via planilha',
+                    'pedidos',
+                    {
+                        'pedidos_importados': pedidos_importados,
+                        'erros': len(erros)
+                    }
+                )
             
-            # Registrar atividade
-            log = LogAtividade(
-                usuario_nome=session.get('usuario_nome', 'Desconhecido'),
-                usuario_tipo=session.get('usuario_tipo', 'Desconhecido'),
-                modulo='Pedidos',
-                acao='Importação em massa',
-                detalhes=f'{pedidos_importados} pedidos importados',
-                timestamp=datetime.now()
-            )
-            db.session.add(log)
-            db.session.commit()
+            if pedidos_importados > 0:
+                flash(f'{pedidos_importados} pedido(s) importados com sucesso.', 'success')
+            if erros:
+                flash('Alguns registros apresentaram erro. Veja os detalhes abaixo.', 'warning')
+                current_app.logger.warning(f'Erros na importação de pedidos: {erros}')
             
             current_app.logger.info(f"{pedidos_importados} pedidos importados por {session.get('usuario_nome', 'N/A')}")
             
-            # Mostrar mensagem de resultado
-            if pedidos_importados > 0:
-                flash(f'{pedidos_importados} pedido(s) importado(s) com sucesso!', 'success')
+            session['resultado_importacao_pedidos'] = {
+                'sucesso': pedidos_importados,
+                'erros': erros
+            }
             
-            if erros:
-                flash(f'{len(erros)} erro(s) durante a importação. Verifique o log.', 'warning')
-                current_app.logger.warning(f'Erros na importação: {erros}')
-            
-            return redirect(url_for('pedidos.listar_pedidos'))
-            
+            return redirect(url_for('pedidos.importar_pedidos'))
+        
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            current_app.logger.error(f"Erro de banco ao importar pedidos: {str(e)}")
+            flash('Erro de banco de dados ao importar pedidos.', 'error')
+            return redirect(url_for('pedidos.importar_pedidos'))
+        except ImportError:
+            current_app.logger.error("Pandas não está instalado para processar a planilha de pedidos.")
+            flash('Dependência ausente: instale o pacote pandas para importar planilhas.', 'error')
+            return redirect(url_for('pedidos.importar_pedidos'))
         except Exception as e:
+            db.session.rollback()
             current_app.logger.error(f"Erro ao importar pedidos: {str(e)}")
             flash(f'Erro ao importar pedidos: {str(e)}', 'error')
-            db.session.rollback()
-            return redirect(request.url)
+            return redirect(url_for('pedidos.importar_pedidos'))
     
     # GET: Mostrar formulário de importação
-    return render_template('importar_pedidos.html')
+    return render_template('importar_pedidos.html', resultado_importacao=resultado)
 
 @pedidos_bp.route('/importar/exemplo')
 @login_obrigatorio
