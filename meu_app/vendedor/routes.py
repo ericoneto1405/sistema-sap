@@ -16,15 +16,24 @@ from .services import VendedorService
 )
 def dashboard():
     """
-    TELA 1: Visão de Atividade dos Clientes
+    Dashboard renovado com cards resumo e rankings
     
     Cache: 10 minutos
     Invalidação: pedidos e clientes atualizados
     """
-    clientes_por_atividade = VendedorService.get_clientes_por_atividade()
+    resumo = VendedorService.get_resumo_dashboard()
     
-    return render_template('vendedor/dashboard.html', 
-                         clientes=clientes_por_atividade)
+    # Rankings
+    rankings_data = VendedorService.get_rankings('todos')
+    ranking_faturamento = rankings_data['faturamento'][:10]
+    ranking_margem = rankings_data['margem'][:10]
+    ranking_produtos = VendedorService.get_ranking_produtos(10)
+    
+    return render_template('vendedor/dashboard.html',
+                         resumo=resumo,
+                         ranking_faturamento=ranking_faturamento,
+                         ranking_margem=ranking_margem,
+                         ranking_produtos=ranking_produtos)
 
 @vendedor_bp.route('/cliente/<int:cliente_id>')
 @login_obrigatorio

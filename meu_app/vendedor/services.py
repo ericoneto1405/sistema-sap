@@ -295,3 +295,176 @@ class VendedorService:
             'diversidade': ranking_diversidade,
             'margem': ranking_margem
         }
+    
+    @staticmethod
+    def get_resumo_dashboard():
+        """
+        Retorna resumo geral do dashboard
+        """
+        hoje = datetime.now().date()
+        
+        # Total de clientes
+        total_clientes = Cliente.query.count()
+        
+        # Clientes com última compra
+        clientes_ultima_compra = db.session.query(
+            Cliente.id,
+            func.max(Pedido.data).label('ultima_compra')
+        ).join(Pedido, Cliente.id == Pedido.cliente_id)\
+         .group_by(Cliente.id).all()
+        
+        # Categorizar por período
+        sem_compra_7_dias = []
+        sem_compra_15_dias = []
+        sem_compra_30_dias = []
+        
+        for cliente in clientes_ultima_compra:
+            dias = (hoje - cliente.ultima_compra.date()).days
+            
+            if 7 < dias <= 15:
+                sem_compra_7_dias.append(cliente.id)
+            elif 15 < dias <= 30:
+                sem_compra_15_dias.append(cliente.id)
+            elif dias > 30:
+                sem_compra_30_dias.append(cliente.id)
+        
+        return {
+            'total_clientes': total_clientes,
+            'sem_compra_7_dias': len(sem_compra_7_dias),
+            'sem_compra_15_dias': len(sem_compra_15_dias),
+            'sem_compra_30_dias': len(sem_compra_30_dias)
+        }
+    
+    @staticmethod
+    def get_clientes_por_periodo(periodo):
+        """
+        Retorna lista de clientes baseado no período sem comprar
+        periodo: 'todos', '7', '15', '30'
+        """
+        hoje = datetime.now().date()
+        
+        # Buscar clientes com última compra
+        clientes_query = db.session.query(
+            Cliente.id,
+            Cliente.nome,
+            Cliente.fantasia,
+            Cliente.telefone,
+            func.max(Pedido.data).label('ultima_compra')
+        ).join(Pedido, Cliente.id == Pedido.cliente_id)\
+         .group_by(Cliente.id, Cliente.nome, Cliente.fantasia, Cliente.telefone)
+        
+        if periodo == 'todos':
+            clientes = clientes_query.all()
+        else:
+            clientes = clientes_query.all()
+            # Filtrar por período
+            dias_min = 0
+            dias_max = 999999
+            
+            if periodo == '7':
+                dias_min = 7
+                dias_max = 15
+            elif periodo == '15':
+                dias_min = 15
+                dias_max = 30
+            elif periodo == '30':
+                dias_min = 30
+            
+            clientes = [c for c in clientes 
+                       if dias_min < (hoje - c.ultima_compra.date()).days <= dias_max]
+        
+        # Buscar valor da última compra
+        resultado = []
+        for cliente in clientes:
+            ultimo_pedido = Pedido.query.filter_by(cliente_id=cliente.id)\
+                                        .order_by(Pedido.data.desc()).first()
+            
+            if ultimo_pedido:
+                valor_ultima = db.session.query(
+                    func.sum(ItemPedido.valor_total_venda)
+                ).filter(ItemPedido.pedido_id == ultimo_pedido.id).scalar() or 0
+            else:
+                valor_ultima = 0
+            
+            dias_sem_comprar = (hoje - cliente.ultima_compra.date()).days
+            
+            resultado.append({
+                'id': cliente.id,
+                'nome': cliente.nome,
+                'fantasia': cliente.fantasia,
+                'telefone': cliente.telefone,
+                'ultima_compra': cliente.ultima_compra,
+                'valor_ultima_compra': float(valor_ultima),
+                'dias_sem_comprar': dias_sem_comprar
+            })
+        
+        return sorted(resultado, key=lambda x: x['dias_sem_comprar'], reverse=True)
+    
+    @staticmethod
+    def get_ranking_produtos(limite=10):
+        """
+        Retorna ranking de produtos por valor vendido
+        """
+        ranking = db.session.query(
+            Produto.id,
+            Produto.nome,
+            func.sum(ItemPedido.valor_total_venda).label('valor_total'),
+            func.sum(ItemPedido.quantidade).label('quantidade_total')
+        ).join(ItemPedido, Produto.id == ItemPedido.produto_id)\
+         .group_by(Produto.id, Produto.nome)\
+         .order_by(desc(func.sum(ItemPedido.valor_total_venda)))\
+         .limit(limite).all()
+        
+        return [{
+            'id': p.id,
+            'nome': p.nome,
+            'valor_total': float(p.valor_total),
+            'quantidade_total': p.quantidade_total
+        } for p in ranking]
+    
+    @staticmethod
+    def get_pedidos_cliente(cliente_id):
+        """
+        Retorna lista de pedidos de um cliente
+        """
+        pedidos = Pedido.query.filter_by(cliente_id=cliente_id)\
+                             .order_by(desc(Pedido.data)).all()
+        
+        resultado = []
+        for pedido in pedidos:
+            valor_total = db.session.query(
+                func.sum(ItemPedido.valor_total_venda)
+            ).filter(ItemPedido.pedido_id == pedido.id).scalar() or 0
+            
+            resultado.append({
+                'id': pedido.id,
+                'data': pedido.data.strftime('%d/%m/%Y'),
+                'valor_total': float(valor_total),
+                'status': pedido.status.value if pedido.status else 'N/A'
+            })
+        
+        return resultado
+    
+    @staticmethod
+    def get_produtos_cliente(cliente_id):
+        """
+        Retorna lista de produtos compilados comprados por um cliente
+        """
+        produtos = db.session.query(
+            Produto.nome,
+            func.sum(ItemPedido.quantidade).label('quantidade_total'),
+            func.avg(ItemPedido.preco_venda).label('preco_medio'),
+            func.max(Pedido.data).label('ultima_compra')
+        ).join(ItemPedido, Produto.id == ItemPedido.produto_id)\
+         .join(Pedido, ItemPedido.pedido_id == Pedido.id)\
+         .filter(Pedido.cliente_id == cliente_id)\
+         .group_by(Produto.nome)\
+         .order_by(desc(func.sum(ItemPedido.quantidade)))\
+         .all()
+        
+        return [{
+            'produto': p.nome,
+            'quantidade_total': p.quantidade_total,
+            'preco_medio': float(p.preco_medio),
+            'ultima_compra': p.ultima_compra.strftime('%d/%m/%Y')
+        } for p in produtos]
