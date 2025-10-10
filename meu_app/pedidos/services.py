@@ -446,6 +446,63 @@ class PedidoService:
             return {'total': 0, 'pago': 0, 'saldo': 0}
     
     @staticmethod
+    def calcular_necessidade_compra() -> List[Dict]:
+        """
+        Calcula a necessidade de compra baseada nos pedidos liberados pelo comercial
+        
+        Returns:
+            List[Dict]: Lista com produtos e necessidade de compra
+        """
+        try:
+            from sqlalchemy import func
+            from ..models import Estoque
+            
+            # Buscar todos os pedidos confirmados pelo comercial
+            pedidos_liberados = db.session.query(
+                Produto.id,
+                Produto.nome,
+                func.sum(ItemPedido.quantidade).label('quantidade_pedida')
+            ).join(
+                ItemPedido, ItemPedido.produto_id == Produto.id
+            ).join(
+                Pedido, Pedido.id == ItemPedido.pedido_id
+            ).filter(
+                Pedido.confirmado_comercial == True
+            ).group_by(
+                Produto.id, Produto.nome
+            ).all()
+            
+            resultado = []
+            
+            for produto_id, produto_nome, quantidade_pedida in pedidos_liberados:
+                # Buscar estoque atual
+                estoque = Estoque.query.filter_by(produto_id=produto_id).first()
+                quantidade_estoque = estoque.quantidade if estoque else 0
+                
+                # Calcular necessidade
+                saldo = quantidade_estoque - int(quantidade_pedida)
+                necessidade_compra = abs(saldo) if saldo < 0 else 0
+                
+                resultado.append({
+                    'produto_id': produto_id,
+                    'produto_nome': produto_nome,
+                    'quantidade_pedida': int(quantidade_pedida),
+                    'quantidade_estoque': quantidade_estoque,
+                    'saldo': saldo,
+                    'necessidade_compra': necessidade_compra,
+                    'status': 'CRÍTICO' if saldo < 0 else 'SUFICIENTE' if saldo > 0 else 'ZERADO'
+                })
+            
+            # Ordenar por necessidade de compra (críticos primeiro)
+            resultado.sort(key=lambda x: (x['necessidade_compra'], x['produto_nome']), reverse=True)
+            
+            return resultado
+            
+        except Exception as e:
+            current_app.logger.error(f"Erro ao calcular necessidade de compra: {str(e)}")
+            return []
+    
+    @staticmethod
     def verificar_senha_admin(senha: str) -> bool:
         """
         Verifica se a senha fornecida é do admin
