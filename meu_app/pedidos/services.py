@@ -521,6 +521,143 @@ class PedidoService:
             return False
     
     @staticmethod
+    def processar_planilha_importacao(df):
+        from collections import defaultdict
+        from decimal import Decimal, InvalidOperation
+        import pandas as pd
+        import unicodedata
+
+        def normalizar_nome(valor):
+            if valor is None:
+                return ''
+            ascii_safe = unicodedata.normalize('NFKD', str(valor)).encode('ASCII', 'ignore').decode('ASCII')
+            return ascii_safe.strip().lower()
+
+        clientes_map = {normalizar_nome(cli.nome): cli for cli in Cliente.query.all()}
+        produtos_map = {normalizar_nome(prod.nome): prod for prod in Produto.query.all()}
+        
+        resultados = []
+        pedidos_para_criar = defaultdict(list)
+
+        for index, row in df.iterrows():
+            linha = index + 2  # Linha da planilha para o usuário
+            erros_linha = []
+            
+            # Validações de campo
+            cliente_nome = row.get('cliente_nome')
+            produto_nome = row.get('produto_nome')
+            quantidade = row.get('quantidade')
+            preco_venda = row.get('preco_venda')
+            data = row.get('data')
+
+            if pd.isna(cliente_nome) or not str(cliente_nome).strip():
+                erros_linha.append("Coluna 'cliente_nome' está vazia.")
+            if pd.isna(produto_nome) or not str(produto_nome).strip():
+                erros_linha.append("Coluna 'produto_nome' está vazia.")
+            if pd.isna(data):
+                erros_linha.append("Coluna 'data' está vazia.")
+
+            try:
+                quantidade = int(Decimal(str(quantidade)))
+                if quantidade <= 0:
+                    erros_linha.append("Quantidade deve ser maior que zero.")
+            except (ValueError, TypeError, InvalidOperation):
+                erros_linha.append(f"Quantidade '{quantidade}' é inválida.")
+
+            try:
+                preco_venda = Decimal(str(preco_venda).replace(',', '.'))
+                if preco_venda <= 0:
+                    erros_linha.append("Preço de venda deve ser maior que zero.")
+            except (ValueError, TypeError, InvalidOperation):
+                erros_linha.append(f"Preço de venda '{preco_venda}' é inválido.")
+
+            try:
+                data = pd.to_datetime(data, errors='raise').to_pydatetime()
+            except ValueError:
+                erros_linha.append(f"Data '{data}' é inválida. Use formato AAAA-MM-DD.")
+
+            if erros_linha:
+                resultados.append({'linha': linha, 'status': 'Falha', 'erros': erros_linha, 'dados': row.to_dict()})
+                continue
+
+            # Validação de Negócio
+            cliente = clientes_map.get(normalizar_nome(cliente_nome))
+            if not cliente:
+                erros_linha.append(f"Cliente '{cliente_nome}' não encontrado.")
+
+            produto = produtos_map.get(normalizar_nome(produto_nome))
+            if not produto:
+                erros_linha.append(f"Produto '{produto_nome}' não encontrado.")
+
+            if erros_linha:
+                resultados.append({'linha': linha, 'status': 'Falha', 'erros': erros_linha, 'dados': row.to_dict()})
+                continue
+            
+            # Agrupamento para criação de pedido
+            chave_pedido = (cliente.id, data.date())
+            pedidos_para_criar[chave_pedido].append({
+                'produto': produto,
+                'quantidade': quantidade,
+                'preco_venda': preco_venda
+            })
+            resultados.append({'linha': linha, 'status': 'Sucesso', 'erros': [], 'dados': row.to_dict()})
+
+        # Se houver linhas válidas, criar os pedidos
+        pedidos_criados = 0
+        if any(r['status'] == 'Sucesso' for r in resultados):
+            try:
+                for (cliente_id, data_pedido), itens_data in pedidos_para_criar.items():
+                    novo_pedido = Pedido(cliente_id=cliente_id, data=data_pedido)
+                    db.session.add(novo_pedido)
+                    db.session.flush() # Obter ID do pedido
+
+                    for item_data in itens_data:
+                        produto = item_data['produto']
+                        preco_compra = produto.preco_medio_compra or Decimal(0)
+                        item = ItemPedido(
+                            pedido_id=novo_pedido.id,
+                            produto_id=produto.id,
+                            quantidade=item_data['quantidade'],
+                            preco_venda=item_data['preco_venda'],
+                            preco_compra=preco_compra,
+                            valor_total_venda=item_data['quantidade'] * item_data['preco_venda'],
+                            valor_total_compra=item_data['quantidade'] * preco_compra,
+                            lucro_bruto=(item_data['quantidade'] * item_data['preco_venda']) - (item_data['quantidade'] * preco_compra)
+                        )
+                        db.session.add(item)
+                    pedidos_criados += 1
+                db.session.commit()
+                
+                if pedidos_criados > 0:
+                    PedidoService._registrar_atividade(
+                        'importacao',
+                        'Importação de pedidos históricos',
+                        f'{pedidos_criados} pedido(s) importado(s) via planilha',
+                        'pedidos',
+                        {'pedidos_importados': pedidos_criados}
+                    )
+
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Erro ao salvar pedidos importados no banco: {e}")
+                # Adicionar um erro geral a todos os resultados que eram de sucesso
+                for r in resultados:
+                    if r['status'] == 'Sucesso':
+                        r['status'] = 'Falha'
+                        r['erros'].append("Erro interno no banco de dados ao salvar o pedido.")
+                pedidos_criados = 0
+
+        return {
+            'resumo': {
+                'total_linhas': len(df),
+                'sucesso': len([r for r in resultados if r['status'] == 'Sucesso']),
+                'falha': len([r for r in resultados if r['status'] == 'Falha']),
+                'pedidos_criados': pedidos_criados
+            },
+            'resultados': [r for r in resultados if r['status'] == 'Falha'] # Retornar apenas as linhas com falha
+        }
+
+    @staticmethod
     def _registrar_atividade(tipo_atividade: str, titulo: str, descricao: str, modulo: str, dados_extras: Dict = None) -> None:
         """
         Registra atividade no log do sistema
