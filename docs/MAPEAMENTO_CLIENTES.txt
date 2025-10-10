@@ -1,0 +1,28 @@
+╔════════════════════════════════════════════════════════════════╗
+║          MAPEAMENTO DE CLIENTES - IDs TEMPORÁRIOS             ║
+╚════════════════════════════════════════════════════════════════╝
+
+⚠️  ATENÇÃO: Substitua os IDs temporários pelos IDs REAIS do sistema!
+
+ID_TEMP | NOME DO CLIENTE
+--------|---------------------------------------------------
+      1 | (BRITO) FÁBIO DE OLIVEIRA BRITO
+      2 | LUCIANO MOURA
+      3 | Adailton (SANTO ESTEVÃO)
+      4 | ATACADAI
+      5 | KAIQUE ITATIM
+      6 | AMADEU DISK GELADA
+      7 | NILSON FERREIRA (GILSON BEBIDAS)
+      8 | ROBSON GIGANTE BEBIDAS
+      9 | JOSÉ DILSON DE SOUZA GOMES
+     10 | LUIS PAULO
+     11 | ADAILTON COSTA
+     12 | MARCOS VINÍCIUS BRANDÃO
+     13 | VICTOR BDP
+     14 | MARIVALDO
+
+INSTRUÇÕES:
+1. Acesse: Menu → Clientes → Listar
+2. Para cada cliente acima, anote o ID REAL no sistema
+3. Use Find & Replace no arquivo CSV para substituir os IDs
+   Exemplo: Substitua ',1,' pelo ID real do cliente Fábio

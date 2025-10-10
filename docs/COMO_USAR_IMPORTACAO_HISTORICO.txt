@@ -1,0 +1,237 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║            GUIA: COMO IMPORTAR OS PEDIDOS DO ARQUIVO planilha.md            ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ ARQUIVOS GERADOS COM SUCESSO!
+
+Os seguintes arquivos foram criados na pasta docs/:
+
+  📄 IMPORTACAO_PEDIDOS_HISTORICO.csv ..... Arquivo CSV pronto para importação
+  📄 MAPEAMENTO_CLIENTES.txt .............. Lista de 14 clientes com IDs temporários
+  📄 MAPEAMENTO_PRODUTOS.txt .............. Lista de 53 produtos com IDs temporários
+  📄 COMO_USAR_IMPORTACAO_HISTORICO.txt ... Este guia
+
+═══════════════════════════════════════════════════════════════════════════════
+  📊 RESUMO DOS DADOS CONVERTIDOS
+═══════════════════════════════════════════════════════════════════════════════
+
+  ✓ 323 linhas de pedidos
+  ✓ 14 clientes únicos identificados
+  ✓ 53 produtos únicos identificados
+  ✓ Período: 29/04/2025 até 03/10/2025
+  ✓ Formato convertido para o sistema
+
+═══════════════════════════════════════════════════════════════════════════════
+  ⚠️  IMPORTANTE: IDs TEMPORÁRIOS
+═══════════════════════════════════════════════════════════════════════════════
+
+O arquivo CSV gerado usa IDs TEMPORÁRIOS porque não sabemos os IDs reais dos
+clientes e produtos no seu sistema.
+
+VOCÊ PRECISA SUBSTITUIR ESSES IDs PELOS IDs REAIS ANTES DE IMPORTAR!
+
+═══════════════════════════════════════════════════════════════════════════════
+  📋 PASSO A PASSO PARA IMPORTAÇÃO
+═══════════════════════════════════════════════════════════════════════════════
+
+ETAPA 1: VERIFICAR SE TODOS OS CLIENTES EXISTEM NO SISTEMA
+───────────────────────────────────────────────────────────
+
+  1. Abra o arquivo: MAPEAMENTO_CLIENTES.txt
+  
+  2. Acesse no sistema: Menu → Clientes → Listar
+  
+  3. Para cada cliente na lista, verifique:
+     ✓ Se já está cadastrado: anote o ID real
+     ✗ Se não existe: cadastre primeiro e anote o novo ID
+  
+  Exemplo de clientes que você precisa verificar:
+  - (BRITO) FÁBIO DE OLIVEIRA BRITO
+  - LUCIANO MOURA
+  - Adailton (SANTO ESTEVÃO)
+  - ATACADAI
+  - KAIQUE ITATIM
+  ... e mais 9 clientes
+
+
+ETAPA 2: VERIFICAR SE TODOS OS PRODUTOS EXISTEM NO SISTEMA
+───────────────────────────────────────────────────────────
+
+  1. Abra o arquivo: MAPEAMENTO_PRODUTOS.txt
+  
+  2. Acesse no sistema: Menu → Produtos → Listar
+  
+  3. Para cada produto na lista, verifique:
+     ✓ Se já está cadastrado: anote o ID real
+     ✗ Se não existe: cadastre primeiro e anote o novo ID
+  
+  Exemplo de produtos que você precisa verificar:
+  - GUARANA ANTARCTICA PET 1L
+  - AMSTEL LATA 350 ML
+  - SKOL LITRINHO 300ML RETORNAVEL
+  - BRAHMA CHOPP LATA 350 ML
+  - RED BULL ENERGY DRINK 250 ML
+  ... e mais 48 produtos
+
+
+ETAPA 3: CRIAR TABELA DE MAPEAMENTO
+────────────────────────────────────
+
+  Crie uma tabela como esta:
+
+  ┌─────────────┬──────────────┬─────────┐
+  │ NOME        │ ID TEMPORÁRIO│ ID REAL │
+  ├─────────────┼──────────────┼─────────┤
+  │ ATACADAI    │      4       │   12    │ ← exemplo
+  │ KAIQUE      │      5       │   8     │ ← exemplo
+  └─────────────┴──────────────┴─────────┘
+
+  Faça isso para TODOS os clientes e produtos!
+
+
+ETAPA 4: SUBSTITUIR IDs NO ARQUIVO CSV
+───────────────────────────────────────
+
+  Opção A - Usando Excel/LibreOffice:
+  
+    1. Abra: IMPORTACAO_PEDIDOS_HISTORICO.csv
+    2. Use Ctrl+H (Find & Replace)
+    3. Para cada cliente:
+       - Encontrar: ",1," (ID temporário)
+       - Substituir: ",12," (ID real do sistema)
+       - Clique em "Substituir Tudo"
+    4. Repita para TODOS os clientes e produtos
+    5. Salve o arquivo
+  
+  Opção B - Usando Editor de Texto:
+  
+    1. Abra o CSV em um editor (VS Code, Sublime, Notepad++)
+    2. Use Find & Replace (Ctrl+H)
+    3. Seja CUIDADOSO com as vírgulas:
+       - Para clientes: ",1," → ",12,"
+       - Para produtos: "12,5," → "12,8," (mude só o produto)
+    4. Salve o arquivo
+
+  ⚠️  ATENÇÃO: Seja preciso! Um erro aqui pode causar problemas na importação.
+
+
+ETAPA 5: VALIDAR O ARQUIVO ANTES DE IMPORTAR
+─────────────────────────────────────────────
+
+  Abra o CSV e verifique algumas linhas:
+  
+  ✓ Todos os IDs foram substituídos?
+  ✓ Os preços estão com ponto (25.50) e não vírgula (25,50)?
+  ✓ As datas estão no formato YYYY-MM-DD?
+  ✓ Não há linhas vazias?
+  
+  Exemplo de linha CORRETA:
+  12,8,10,25.50,2025-04-29
+
+
+ETAPA 6: IMPORTAR NO SISTEMA
+────────────────────────────
+
+  1. Acesse: Menu → Pedidos → Importar Histórico
+  
+  2. Faça upload do arquivo CSV ajustado
+  
+  3. Aguarde o processamento
+  
+  4. Verifique a mensagem de resultado:
+     ✅ "X pedido(s) importado(s) com sucesso!"
+     ⚠️  Se houver erros, verifique o log
+  
+  5. Confira os pedidos: Menu → Pedidos → Listar
+
+═══════════════════════════════════════════════════════════════════════════════
+  💡 DICAS IMPORTANTES
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. FAÇA UM BACKUP DO BANCO DE DADOS ANTES!
+     Esta é uma importação grande (323 linhas)
+  
+  2. TESTE COM POUCOS DADOS PRIMEIRO
+     Crie um CSV com apenas 5-10 linhas para testar
+  
+  3. ORGANIZE-SE
+     Prepare uma planilha Excel com o mapeamento completo
+  
+  4. CUIDADO COM NOMES SIMILARES
+     Exemplo: "SKOL LATA 350ML" vs "Skol lata 269ml"
+     Esses são produtos DIFERENTES!
+  
+  5. AGRUPE POR DATA E CLIENTE
+     O sistema agrupa linhas com mesma data e cliente em 1 pedido
+     Ex: 5 linhas do cliente X na data Y = 1 pedido com 5 itens
+
+═══════════════════════════════════════════════════════════════════════════════
+  📝 EXEMPLO PRÁTICO
+═══════════════════════════════════════════════════════════════════════════════
+
+Suponha que no sistema você tenha:
+  - Cliente "ATACADAI" com ID = 25
+  - Produto "SKOL LATA 350ML" com ID = 102
+
+No arquivo MAPEAMENTO_CLIENTES.txt você vê:
+  4 | ATACADAI
+
+No arquivo MAPEAMENTO_PRODUTOS.txt você vê:
+  22 | SKOL LATA 350ML
+
+No CSV, a linha original é:
+  4,22,100,33,2025-07-03
+
+Você deve substituir para:
+  25,102,100,33,2025-07-03
+  ↑   ↑
+  |   └─ ID real do produto
+  └───── ID real do cliente
+
+═══════════════════════════════════════════════════════════════════════════════
+  ❓ PERGUNTAS FREQUENTES
+═══════════════════════════════════════════════════════════════════════════════
+
+Q: Posso importar sem ajustar os IDs?
+A: NÃO! O sistema vai procurar clientes com ID 1, 2, 3... que provavelmente
+   não correspondem aos clientes corretos.
+
+Q: E se um cliente ou produto não existir?
+A: Cadastre-o ANTES da importação. A importação ignora linhas com IDs inválidos.
+
+Q: Posso fazer a substituição de IDs em partes?
+A: Sim! Substitua cliente por cliente, salve e teste. É mais seguro.
+
+Q: Quanto tempo leva a importação?
+A: Para 323 linhas, cerca de 1-2 minutos dependendo do servidor.
+
+Q: E se der erro?
+A: Verifique o log em instance/logs/app.log para detalhes do erro.
+
+═══════════════════════════════════════════════════════════════════════════════
+  ✅ CHECKLIST FINAL
+═══════════════════════════════════════════════════════════════════════════════
+
+  Antes de importar, confirme:
+
+  □ Todos os 14 clientes estão cadastrados no sistema
+  □ Todos os 53 produtos estão cadastrados no sistema
+  □ Criei uma tabela de mapeamento completa
+  □ Substituí TODOS os IDs de clientes no CSV
+  □ Substituí TODOS os IDs de produtos no CSV
+  □ Validei algumas linhas do arquivo final
+  □ Fiz backup do banco de dados
+  □ Testei com um arquivo pequeno primeiro (opcional mas recomendado)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+  Boa importação! 🚀
+
+  Se precisar de ajuda, consulte:
+  - docs/GUIA_IMPORTACAO_PEDIDOS.md
+  - docs/LEIA_ANTES_IMPORTACAO.txt
+
+═══════════════════════════════════════════════════════════════════════════════
+
