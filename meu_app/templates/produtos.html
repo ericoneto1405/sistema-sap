@@ -623,6 +623,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function uploadPlanilha(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];
+        
+        // Mostrar feedback visual imediato
+        const btn = document.querySelector('.btn-upload');
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Processando...';
+        btn.disabled = true;
+        
         const formData = new FormData();
         formData.append('file', file);
         const csrfToken = window.CSRF_TOKEN || '';
@@ -631,13 +638,22 @@ function uploadPlanilha(input) {
         }
         const headers = csrfToken ? {'X-CSRFToken': csrfToken} : {};
 
+        console.log('Iniciando upload de produtos:', file.name);
+
         fetch('/produtos/upload', {
             method: 'POST',
             headers,
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Resposta recebida:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('Dados:', data);
+            btn.textContent = originalText;
+            btn.disabled = false;
+            
             if (data.success) {
                 alert('Produtos importados com sucesso!');
                 location.reload();
@@ -655,14 +671,28 @@ function uploadPlanilha(input) {
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao fazer upload da planilha');
+            btn.textContent = originalText;
+            btn.disabled = false;
+            alert('Erro ao fazer upload da planilha: ' + error.message);
         });
+        
+        // Limpar o input para permitir reenvio do mesmo arquivo
+        input.value = '';
+    } else {
+        console.log('Nenhum arquivo selecionado');
     }
 }
 
 function uploadPrecos(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];
+        
+        // Mostrar feedback visual imediato
+        const btn = document.querySelector('.btn-upload-preco');
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Processando...';
+        btn.disabled = true;
+        
         const formData = new FormData();
         formData.append('file', file);
         const csrfToken = window.CSRF_TOKEN || '';
@@ -671,13 +701,22 @@ function uploadPrecos(input) {
         }
         const headers = csrfToken ? {'X-CSRFToken': csrfToken} : {};
 
+        console.log('Iniciando upload de preços:', file.name);
+
         fetch('/produtos/upload_precos', {
             method: 'POST',
             headers,
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Resposta recebida:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('Dados:', data);
+            btn.textContent = originalText;
+            btn.disabled = false;
+            
             if (data.success) {
                 alert(data.message);
                 location.reload();
@@ -687,8 +726,15 @@ function uploadPrecos(input) {
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao fazer upload da planilha de preços');
+            btn.textContent = originalText;
+            btn.disabled = false;
+            alert('Erro ao fazer upload da planilha de preços: ' + error.message);
         });
+        
+        // Limpar o input para permitir reenvio do mesmo arquivo
+        input.value = '';
+    } else {
+        console.log('Nenhum arquivo selecionado');
     }
 }
 
