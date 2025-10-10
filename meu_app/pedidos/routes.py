@@ -338,265 +338,62 @@ def visualizar_pedido(id):
 @permissao_necessaria('acesso_pedidos')
 def importar_pedidos():
     """Importa pedidos históricos de arquivo CSV ou Excel"""
-    resultado = session.pop('resultado_importacao_pedidos', None)
-    if isinstance(resultado, dict):
-        resultado = SimpleNamespace(**resultado)
+    resultado_importacao = session.pop('resultado_importacao_pedidos', None)
 
     if request.method == 'POST':
+        if 'arquivo' not in request.files or not request.files['arquivo'].filename:
+            flash('Nenhum arquivo foi selecionado.', 'error')
+            return redirect(url_for('pedidos.importar_pedidos'))
+
+        arquivo = request.files['arquivo']
+        extensao = arquivo.filename.rsplit('.', 1)[1].lower() if '.' in arquivo.filename else ''
+
+        if extensao not in ['csv', 'xlsx', 'xls']:
+            flash('Formato de arquivo inválido. Use CSV ou Excel (.xlsx, .xls).', 'error')
+            return redirect(url_for('pedidos.importar_pedidos'))
+
         try:
-            # Verificar se um arquivo foi enviado
-            if 'arquivo' not in request.files:
-                flash('Nenhum arquivo foi selecionado.', 'error')
-                return redirect(url_for('pedidos.importar_pedidos'))
-            
-            arquivo = request.files['arquivo']
-            
-            if arquivo.filename == '':
-                flash('Nenhum arquivo foi selecionado.', 'error')
-                return redirect(url_for('pedidos.importar_pedidos'))
-            
-            # Verificar extensão do arquivo
-            extensao = arquivo.filename.rsplit('.', 1)[1].lower() if '.' in arquivo.filename else ''
-            if extensao not in ['csv', 'xlsx', 'xls']:
-                flash('Formato de arquivo inválido. Use CSV ou Excel (.xlsx, .xls).', 'error')
-                return redirect(url_for('pedidos.importar_pedidos'))
-            
-            # Processar arquivo
             import pandas as pd
-            
             conteudo = arquivo.read()
             if not conteudo:
                 flash('O arquivo enviado está vazio.', 'error')
                 return redirect(url_for('pedidos.importar_pedidos'))
-            
-            if extensao == 'csv':
-                df = pd.read_csv(BytesIO(conteudo))
-            else:
-                df = pd.read_excel(BytesIO(conteudo))
-            
+
+            df = pd.read_csv(BytesIO(conteudo)) if extensao == 'csv' else pd.read_excel(BytesIO(conteudo))
+
             if df.empty:
                 flash('O arquivo não contém linhas para importar.', 'warning')
                 return redirect(url_for('pedidos.importar_pedidos'))
-            
+
             df.columns = [str(col).strip().lower() for col in df.columns]
             colunas_necessarias = ['cliente_nome', 'produto_nome', 'quantidade', 'preco_venda', 'data']
             colunas_faltantes = [col for col in colunas_necessarias if col not in df.columns]
-            
+
             if colunas_faltantes:
                 flash(f'Colunas faltantes no arquivo: {", ".join(colunas_faltantes)}.', 'error')
                 return redirect(url_for('pedidos.importar_pedidos'))
+
+            resultado = PedidoService.processar_planilha_importacao(df[colunas_necessarias])
             
-            df = df[colunas_necessarias].copy()
-            df['linha_planilha'] = df.index + 2  # Considera cabeçalho na linha 1
-            
-            clientes_map = defaultdict(list)
-            for cliente in Cliente.query.order_by(Cliente.nome).all():
-                clientes_map[normalizar_nome(cliente.nome)].append(cliente)
-            
-            produtos_map = defaultdict(list)
-            for produto in Produto.query.order_by(Produto.nome).all():
-                produtos_map[normalizar_nome(produto.nome)].append(produto)
-            
-            erros = []
-            registros_validos = []
-            
-            def _parse_texto(valor, coluna, linha):
-                if pd.isna(valor) or str(valor).strip() == '':
-                    erros.append(f"Linha {linha}: campo '{coluna}' está vazio.")
-                    return None
-                return str(valor).strip()
-            
-            def _parse_inteiro(valor, coluna, linha, minimo=None):
-                if pd.isna(valor) or str(valor).strip() == '':
-                    erros.append(f"Linha {linha}: campo '{coluna}' está vazio.")
-                    return None
-                try:
-                    numero = int(Decimal(str(valor).strip()))
-                except (ValueError, InvalidOperation):
-                    erros.append(f"Linha {linha}: campo '{coluna}' precisa ser um número inteiro.")
-                    return None
-                if minimo is not None and numero < minimo:
-                    erros.append(f"Linha {linha}: campo '{coluna}' deve ser maior ou igual a {minimo}.")
-                    return None
-                return numero
-            
-            def _parse_decimal(valor, coluna, linha):
-                if pd.isna(valor) or str(valor).strip() == '':
-                    erros.append(f"Linha {linha}: campo '{coluna}' está vazio.")
-                    return None
-                valor_str = str(valor).strip().replace('R$', '').replace(' ', '').replace(',', '.')
-                try:
-                    return Decimal(valor_str)
-                except (ValueError, InvalidOperation):
-                    erros.append(f"Linha {linha}: campo '{coluna}' possui valor inválido: {valor}.")
-                    return None
-            
-            def _parse_data(valor, linha):
-                if pd.isna(valor) or str(valor).strip() == '':
-                    erros.append(f"Linha {linha}: campo 'data' está vazio.")
-                    return None
-                data_convertida = pd.to_datetime(valor, errors='coerce', dayfirst=True)
-                if pd.isna(data_convertida):
-                    erros.append(f"Linha {linha}: data inválida '{valor}'. Use formatos YYYY-MM-DD ou DD/MM/YYYY.")
-                    return None
-                return data_convertida.to_pydatetime()
-            
-            for _, row in df.iterrows():
-                linha = int(row['linha_planilha'])
-                cliente_nome_planilha = _parse_texto(row['cliente_nome'], 'cliente_nome', linha)
-                produto_nome_planilha = _parse_texto(row['produto_nome'], 'produto_nome', linha)
-                quantidade = _parse_inteiro(row['quantidade'], 'quantidade', linha, minimo=1)
-                preco_venda = _parse_decimal(row['preco_venda'], 'preco_venda', linha)
-                data = _parse_data(row['data'], linha)
-                
-                if None in (cliente_nome_planilha, produto_nome_planilha, quantidade, preco_venda, data):
-                    continue
-                
-                cliente_key = normalizar_nome(cliente_nome_planilha)
-                cliente_lista = clientes_map.get(cliente_key, [])
-                if not cliente_lista:
-                    erros.append(f'Linha {linha}: cliente "{cliente_nome_planilha}" não foi encontrado no sistema.')
-                    continue
-                if len(cliente_lista) > 1:
-                    nomes_ids = ', '.join(str(cli.id) for cli in cliente_lista)
-                    erros.append(
-                        f'Linha {linha}: há mais de um cliente com o nome "{cliente_nome_planilha}" (IDs: {nomes_ids}). '
-                        'Ajuste o nome para ficar único.'
-                    )
-                    continue
-                cliente = cliente_lista[0]
-                
-                produto_key = normalizar_nome(produto_nome_planilha)
-                produto_lista = produtos_map.get(produto_key, [])
-                if not produto_lista:
-                    erros.append(f'Linha {linha}: produto "{produto_nome_planilha}" não foi encontrado no sistema.')
-                    continue
-                if len(produto_lista) > 1:
-                    nomes_ids = ', '.join(str(prod.id) for prod in produto_lista)
-                    erros.append(
-                        f'Linha {linha}: há mais de um produto com o nome "{produto_nome_planilha}" (IDs: {nomes_ids}). '
-                        'Ajuste o nome para ficar único.'
-                    )
-                    continue
-                produto = produto_lista[0]
-                
-                registros_validos.append({
-                    'linha': linha,
-                    'cliente': cliente,
-                    'cliente_nome_planilha': cliente_nome_planilha,
-                    'produto': produto,
-                    'produto_nome_planilha': produto_nome_planilha,
-                    'quantidade': quantidade,
-                    'preco_venda': preco_venda,
-                    'data': data
-                })
-            
-            if not registros_validos:
-                flash('Nenhum registro válido encontrado. Corrija os erros apontados e tente novamente.', 'error')
-                session['resultado_importacao_pedidos'] = {
-                    'sucesso': 0,
-                    'erros': erros[:20],
-                    'total_erros': len(erros),
-                    'erros_truncados': len(erros) > 20
-                }
-                return redirect(url_for('pedidos.importar_pedidos'))
-            
-            pedidos_por_chave = defaultdict(list)
-            for registro in registros_validos:
-                chave = (registro['cliente'].id, registro['data'])
-                pedidos_por_chave[chave].append(registro)
-            
-            pedidos_importados = 0
-            
-            for (cliente_id, data), itens in pedidos_por_chave.items():
-                cliente = itens[0]['cliente']
-                
-                pedido = Pedido(cliente_id=cliente_id, data=data)
-                itens_validos = 0
-                
-                for item in itens:
-                    produto = item['produto']
-                    
-                    preco_compra = Decimal(str(getattr(produto, 'preco_medio_compra', 0) or 0))
-                    quantidade = item['quantidade']
-                    preco_venda = item['preco_venda']
-                    valor_total_venda = preco_venda * quantidade
-                    valor_total_compra = preco_compra * quantidade
-                    lucro_bruto = valor_total_venda - valor_total_compra
-                    
-                    pedido.itens.append(ItemPedido(
-                        produto_id=produto.id,
-                        quantidade=quantidade,
-                        preco_venda=preco_venda,
-                        preco_compra=preco_compra,
-                        valor_total_venda=valor_total_venda,
-                        valor_total_compra=valor_total_compra,
-                        lucro_bruto=lucro_bruto
-                    ))
-                    itens_validos += 1
-                
-                if itens_validos == 0:
-                    erros.append(
-                        f'Pedido do cliente "{cliente.nome}" em {data.strftime("%d/%m/%Y")} ignorado: nenhum item válido.'
-                    )
-                    continue
-                
-                db.session.add(pedido)
-                pedidos_importados += 1
-            
-            if pedidos_importados == 0:
-                db.session.rollback()
-            else:
-                db.session.commit()
-                PedidoService._registrar_atividade(
-                    'importacao',
-                    'Importação de pedidos históricos',
-                    f'{pedidos_importados} pedido(s) importado(s) via planilha',
-                    'pedidos',
-                    {
-                        'pedidos_importados': pedidos_importados,
-                        'erros': len(erros)
-                    }
-                )
-            
-            if pedidos_importados > 0:
-                flash(f'{pedidos_importados} pedido(s) importados com sucesso.', 'success')
-                if erros:
-                    flash('Alguns registros apresentaram erro. Veja os detalhes abaixo.', 'warning')
-            elif erros:
-                flash('Nenhum pedido foi importado. Verifique os erros listados abaixo.', 'error')
-            
-            if erros:
-                current_app.logger.warning(f'Erros na importação de pedidos: {erros}')
-            
-            current_app.logger.info(f"{pedidos_importados} pedidos importados por {session.get('usuario_nome', 'N/A')}")
-            
-            session['resultado_importacao_pedidos'] = {
-                'sucesso': pedidos_importados,
-                'erros': erros[:20],
-                'total_erros': len(erros),
-                'erros_truncados': len(erros) > 20
-            }
-            
+            resumo = resultado.get('resumo', {})
+            if resumo.get('pedidos_criados', 0) > 0:
+                flash(f"{resumo['pedidos_criados']} pedido(s) importado(s) com sucesso!", 'success')
+            if resumo.get('falha', 0) > 0:
+                flash(f"{resumo['falha']} linha(s) contiveram erros e não foram importadas. Verifique os detalhes abaixo.", 'warning')
+
+            session['resultado_importacao_pedidos'] = resultado
             return redirect(url_for('pedidos.importar_pedidos'))
-        
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            current_app.logger.error(f"Erro de banco ao importar pedidos: {str(e)}")
-            flash('Erro de banco de dados ao importar pedidos.', 'error')
-            return redirect(url_for('pedidos.importar_pedidos'))
+
         except ImportError:
-            current_app.logger.error("Pandas não está instalado para processar a planilha de pedidos.")
-            flash('Dependência ausente: instale o pacote pandas para importar planilhas.', 'error')
+            current_app.logger.error("Pandas ou openpyxl não estão instalados.")
+            flash('Dependência ausente para processar planilhas. Contate o suporte.', 'error')
             return redirect(url_for('pedidos.importar_pedidos'))
         except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Erro ao importar pedidos: {str(e)}")
-            flash(f'Erro ao importar pedidos: {str(e)}', 'error')
+            current_app.logger.error(f"Erro inesperado ao importar pedidos: {e}", exc_info=True)
+            flash(f'Ocorreu um erro inesperado ao processar o arquivo: {e}', 'error')
             return redirect(url_for('pedidos.importar_pedidos'))
-    
-    # GET: Mostrar formulário de importação
-    return render_template('importar_pedidos.html', resultado_importacao=resultado)
+
+    return render_template('importar_pedidos.html', resultado_importacao=resultado_importacao)
 
 @pedidos_bp.route('/importar/exemplo')
 @login_obrigatorio
