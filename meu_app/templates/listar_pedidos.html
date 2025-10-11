@@ -621,6 +621,11 @@
     .row-ok:hover {
         background-color: #e0ffe8 !important;
     }
+
+    .linha-removida {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
     
     .text-danger {
         color: #dc3545;
@@ -789,19 +794,28 @@ function confirmarAcao() {
                 window.location.href = data.redirect_url;
             } else if (acaoAtual === 'excluir') {
                 fecharModal();
-                // Remover a linha da tabela
                 const linha = document.getElementById(`linha-pedido-${pedidoId}`);
                 if (linha) {
-                    linha.remove();
+                    linha.classList.add('linha-removida');
+                    setTimeout(() => {
+                        linha.remove();
+                        const tbody = document.querySelector('table tbody');
+                        if (tbody && tbody.children.length === 0) {
+                            const vazio = document.createElement('tr');
+                            vazio.innerHTML = '<td colspan="7">Nenhum pedido encontrado com os filtros aplicados.</td>';
+                            tbody.appendChild(vazio);
+                        }
+                    }, 200);
                 }
-                // Mostrar mensagem de sucesso
-                alert('Pedido excluído com sucesso!');
+                if (typeof notificationSystem !== 'undefined') {
+                    notificationSystem.success('Pedido excluído', data.message || 'Pedido excluído com sucesso!', 4000);
+                }
             } else if (acaoAtual === 'confirmar_comercial') {
                 fecharModal();
-                // Recarregar a página para atualizar o status
                 window.location.reload();
-                // Mostrar mensagem de sucesso
-                alert('Pedido confirmado com sucesso!');
+                if (typeof notificationSystem !== 'undefined') {
+                    notificationSystem.success('Pedido confirmado', data.message || 'Pedido confirmado com sucesso!', 4000);
+                }
             }
         } else {
             errorMessage.textContent = data.message || 'Senha incorreta.';
