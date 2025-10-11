@@ -294,6 +294,63 @@ class VisionOcrService:
             r'(?:VALOR\s+LIQUIDO|TOTAL\s+LIQUIDO)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
         ]
         
+        lines = [line.strip() for line in text_normalized.splitlines() if line.strip()]
+
+        def extract_numbers(fragment: str) -> list[float]:
+            numeros = []
+            fragment_clean = fragment.replace('O', '0').replace('º', '0').replace('L', '1')
+
+            decimal_pattern = r'R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})'
+            for match in re.findall(decimal_pattern, fragment_clean):
+                try:
+                    valor = VisionOcrService._parse_currency_value(match)
+                    if valor > 0:
+                        numeros.append(valor)
+                except (ValueError, TypeError):
+                    continue
+
+            inteiro_pattern = r'R?\$?\s*(\d{1,3}(?:[.\s]\d{3})+)(?![,\d])'
+            for match in re.findall(inteiro_pattern, fragment_clean):
+                try:
+                    valor = float(match.replace('.', '').replace(' ', ''))
+                    if valor > 0:
+                        numeros.append(valor)
+                except (ValueError, TypeError):
+                    continue
+
+            plain_pattern = r'R?\$?\s*(\d{5,})'
+            for match in re.findall(plain_pattern, fragment_clean):
+                try:
+                    valor = float(match)
+                    if valor > 0:
+                        numeros.append(valor)
+                except (ValueError, TypeError):
+                    continue
+
+            return numeros
+
+        keywords = [
+            'VALOR TOTAL',
+            'TOTAL DA NOTA',
+            'VALOR DA NOTA',
+            'TOTAL NF',
+            'TOTAL R$',
+            'TOTAL GERAL'
+        ]
+
+        valores_prioritarios = []
+        for idx, line in enumerate(lines):
+            snippet = line
+            if idx + 1 < len(lines):
+                snippet = f"{snippet} {lines[idx + 1]}"
+            if any(keyword in snippet for keyword in keywords):
+                valores_prioritarios.extend(extract_numbers(snippet))
+
+        if valores_prioritarios:
+            valores_prioritarios = [v for v in valores_prioritarios if v >= 5.0]
+            if valores_prioritarios:
+                return max(valores_prioritarios)
+
         for pattern in max_priority_patterns:
             matches = re.findall(pattern, text_normalized, re.IGNORECASE)
             if matches:
@@ -302,14 +359,12 @@ class VisionOcrService:
                     return VisionOcrService._parse_currency_value(value_str)
                 except (ValueError, TypeError):
                     continue
-        
-        # Padrão 2: ALTA PRIORIDADE - Labels próximos ao valor
-        # \d+ para aceitar qualquer quantidade de dígitos
+
         high_priority_patterns = [
             r'(?:VALOR|TOTAL)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
             r'(?:TRANSFERIDO|PAGO)\s*[:\-]?\s*R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})',
         ]
-        
+
         high_priority_values = []
         for pattern in high_priority_patterns:
             matches = re.findall(pattern, text_normalized, re.IGNORECASE)
@@ -319,65 +374,43 @@ class VisionOcrService:
                     high_priority_values.append(valor)
                 except (ValueError, TypeError):
                     continue
-        
-        # Se encontrou valores prioritários, retornar o MAIOR
+
         if high_priority_values:
             return max(high_priority_values)
 
-        # Padrão 3: FALLBACK - Buscar TODOS valores monetários e retornar o MAIOR
-        # Ignora valores muito pequenos (< 5.00) se houver maiores
-        # \d+ para aceitar qualquer quantidade de dígitos
-        fallback_pattern = r'R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})'
-        matches = re.findall(fallback_pattern, text_normalized)
         all_values = []
-        
-        for match in matches:
+        for match in re.findall(r'R?\$?\s*(\d+(?:[.,\s]\d{3})*[.,]\d{2})', text_normalized):
             try:
                 valor = VisionOcrService._parse_currency_value(match)
-                # Ignorar valores zerados
                 if valor > 0:
                     all_values.append(valor)
             except (ValueError, TypeError):
                 continue
-        
-        if not all_values:
-            return None
-        
-        # Se todos valores são pequenos (< 1000), retornar o maior
-        max_valor = max(all_values)
-        
-        # Se houver valores > 5.00, filtrar os muito pequenos (taxas)
-        if max_valor >= 5.00:
-            valores_filtrados = [v for v in all_values if v >= 5.00]
-            if valores_filtrados:
-                return max(valores_filtrados)
-        
-        # Padrão 4: valores sem centavos (ex: 158.720 ou 158 720)
-        inteiro_pattern = r'R?\$?\s*(\d{1,3}(?:[.\s]\d{3})+)(?![,\d])'
-        matches_inteiros = re.findall(inteiro_pattern, text_normalized)
-        inteiros = []
-        for match in matches_inteiros:
+
+        for match in re.findall(r'R?\$?\s*(\d{1,3}(?:[.\s]\d{3})+)(?![,\d])', text_normalized):
             try:
                 valor = float(match.replace('.', '').replace(' ', ''))
                 if valor > 0:
-                    inteiros.append(valor)
+                    all_values.append(valor)
             except (ValueError, TypeError):
                 continue
 
-        # Padrão 5: números longos sem separadores (ex: 158720)
-        plain_inteiros = re.findall(r'R?\$?\s*(\d{5,})', text_normalized)
-        for match in plain_inteiros:
+        for match in re.findall(r'R?\$?\s*(\d{5,})', text_normalized):
             try:
                 valor = float(match)
                 if valor > 0:
-                    inteiros.append(valor)
+                    all_values.append(valor)
             except (ValueError, TypeError):
                 continue
 
-        if inteiros:
-            maior_inteiro = max(inteiros)
-            if maior_inteiro >= max_valor:
-                return maior_inteiro
+        if not all_values:
+            return None
+
+        max_valor = max(all_values)
+        if max_valor >= 5.00:
+            candidatos = [v for v in all_values if v >= 5.00]
+            if candidatos:
+                return max(candidatos)
 
         return max_valor
 
@@ -385,6 +418,7 @@ class VisionOcrService:
     def _parse_currency_value(value_str: str) -> float:
         """Converte string de valor monetário para float"""
         value_str = value_str.replace(' ', '')
+        value_str = value_str.replace('O', '0').replace('o', '0')
         if '.' in value_str and ',' in value_str:
             if value_str.rfind('.') > value_str.rfind(','):
                 # Formato americano: 1,234.56
