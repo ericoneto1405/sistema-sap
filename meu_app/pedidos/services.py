@@ -528,6 +528,7 @@ class PedidoService:
     def processar_planilha_importacao(df):
         from collections import defaultdict
         from decimal import Decimal, InvalidOperation
+        from datetime import datetime
         import pandas as pd
         import unicodedata
 
@@ -537,9 +538,27 @@ class PedidoService:
             ascii_safe = unicodedata.normalize('NFKD', str(valor)).encode('ASCII', 'ignore').decode('ASCII')
             return ascii_safe.strip().lower()
 
-        clientes_map = {normalizar_nome(cli.nome): cli for cli in Cliente.query.all()}
-        produtos_map = {normalizar_nome(prod.nome): prod for prod in Produto.query.all()}
+        clientes_map = defaultdict(list)
+        for cli in Cliente.query.all():
+            clientes_map[normalizar_nome(cli.nome)].append(cli)
         
+        produtos_map = defaultdict(list)
+        for prod in Produto.query.all():
+            produtos_map[normalizar_nome(prod.nome)].append(prod)
+        
+        def preparar_dados_para_log(row_dict):
+            dados_limpos = {}
+            for chave, valor in row_dict.items():
+                if isinstance(valor, Decimal):
+                    dados_limpos[chave] = float(valor)
+                elif isinstance(valor, pd.Timestamp):
+                    dados_limpos[chave] = valor.strftime('%Y-%m-%d')
+                elif isinstance(valor, datetime):
+                    dados_limpos[chave] = valor.strftime('%Y-%m-%d')
+                else:
+                    dados_limpos[chave] = str(valor) if valor is not None else ''
+            return dados_limpos
+
         resultados = []
         pedidos_para_criar = defaultdict(list)
 
@@ -553,6 +572,7 @@ class PedidoService:
             quantidade = row.get('quantidade')
             preco_venda = row.get('preco_venda')
             data = row.get('data')
+            data_normalizada = None
 
             if pd.isna(cliente_nome) or not str(cliente_nome).strip():
                 erros_linha.append("Coluna 'cliente_nome' está vazia.")
@@ -576,42 +596,72 @@ class PedidoService:
                 erros_linha.append(f"Preço de venda '{preco_venda}' é inválido.")
 
             try:
-                data = pd.to_datetime(data, errors='raise').to_pydatetime()
+                data_normalizada = pd.to_datetime(data, errors='raise', dayfirst=True).to_pydatetime()
             except ValueError:
-                erros_linha.append(f"Data '{data}' é inválida. Use formato AAAA-MM-DD.")
+                erros_linha.append(f"Data '{data}' é inválida. Use formato AAAA-MM-DD ou DD/MM/AAAA.")
 
             if erros_linha:
-                resultados.append({'linha': linha, 'status': 'Falha', 'erros': erros_linha, 'dados': row.to_dict()})
+                resultados.append({
+                    'linha': linha,
+                    'status': 'Falha',
+                    'erros': erros_linha,
+                    'dados': preparar_dados_para_log(row.to_dict())
+                })
                 continue
 
             # Validação de Negócio
-            cliente = clientes_map.get(normalizar_nome(cliente_nome))
-            if not cliente:
+            cliente_lista = clientes_map.get(normalizar_nome(cliente_nome), [])
+            if not cliente_lista:
                 erros_linha.append(f"Cliente '{cliente_nome}' não encontrado.")
+            elif len(cliente_lista) > 1:
+                ids = ', '.join(str(cli.id) for cli in cliente_lista[:5])
+                if len(cliente_lista) > 5:
+                    ids += ', ...'
+                erros_linha.append(
+                    f"Cliente '{cliente_nome}' não é único. Ajuste o nome cadastrado ou use um apelido único (IDs: {ids})."
+                )
+            else:
+                cliente = cliente_lista[0]
 
-            produto = produtos_map.get(normalizar_nome(produto_nome))
-            if not produto:
+            produto_lista = produtos_map.get(normalizar_nome(produto_nome), [])
+            if not produto_lista:
                 erros_linha.append(f"Produto '{produto_nome}' não encontrado.")
+            elif len(produto_lista) > 1:
+                ids = ', '.join(str(prod.id) for prod in produto_lista[:5])
+                if len(produto_lista) > 5:
+                    ids += ', ...'
+                erros_linha.append(
+                    f"Produto '{produto_nome}' não é único. Ajuste o nome cadastrado ou use um apelido único (IDs: {ids})."
+                )
+            else:
+                produto = produto_lista[0]
 
             if erros_linha:
-                resultados.append({'linha': linha, 'status': 'Falha', 'erros': erros_linha, 'dados': row.to_dict()})
+                resultados.append({
+                    'linha': linha,
+                    'status': 'Falha',
+                    'erros': erros_linha,
+                    'dados': preparar_dados_para_log(row.to_dict())
+                })
                 continue
+            dados_linha = preparar_dados_para_log(row.to_dict())
             
             # Agrupamento para criação de pedido
-            chave_pedido = (cliente.id, data.date())
+            chave_pedido = (cliente.id, data_normalizada.date())
             pedidos_para_criar[chave_pedido].append({
                 'produto': produto,
                 'quantidade': quantidade,
                 'preco_venda': preco_venda
             })
-            resultados.append({'linha': linha, 'status': 'Sucesso', 'erros': [], 'dados': row.to_dict()})
+            resultados.append({'linha': linha, 'status': 'Sucesso', 'erros': [], 'dados': dados_linha})
 
         # Se houver linhas válidas, criar os pedidos
         pedidos_criados = 0
         if any(r['status'] == 'Sucesso' for r in resultados):
             try:
                 for (cliente_id, data_pedido), itens_data in pedidos_para_criar.items():
-                    novo_pedido = Pedido(cliente_id=cliente_id, data=data_pedido)
+                    datetime_pedido = datetime.combine(data_pedido, datetime.min.time())
+                    novo_pedido = Pedido(cliente_id=cliente_id, data=datetime_pedido)
                     db.session.add(novo_pedido)
                     db.session.flush() # Obter ID do pedido
 

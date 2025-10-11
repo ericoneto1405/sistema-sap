@@ -1,8 +1,4 @@
-import unicodedata
-from collections import defaultdict
-from decimal import Decimal, InvalidOperation
 from io import BytesIO
-from types import SimpleNamespace
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,14 +8,6 @@ from meu_app.pedidos.services import PedidoService
 from meu_app.decorators import login_obrigatorio, permissao_necessaria
 
 pedidos_bp = Blueprint('pedidos', __name__, url_prefix='/pedidos')
-
-
-def normalizar_nome(valor):
-    """Remove acentos e padroniza nomes para busca case-insensitive."""
-    if valor is None:
-        return ''
-    ascii_safe = unicodedata.normalize('NFKD', str(valor)).encode('ASCII', 'ignore').decode('ASCII')
-    return ascii_safe.strip().lower()
 
 
 @pedidos_bp.route('/', methods=['GET'])
@@ -376,10 +364,25 @@ def importar_pedidos():
             resultado = PedidoService.processar_planilha_importacao(df[colunas_necessarias])
             
             resumo = resultado.get('resumo', {})
+            erros_resultado = resultado.get('resultados', [])
+
             if resumo.get('pedidos_criados', 0) > 0:
                 flash(f"{resumo['pedidos_criados']} pedido(s) importado(s) com sucesso!", 'success')
+
             if resumo.get('falha', 0) > 0:
-                flash(f"{resumo['falha']} linha(s) contiveram erros e não foram importadas. Verifique os detalhes abaixo.", 'warning')
+                exemplos = []
+                for linha in erros_resultado[:3]:
+                    if linha.get('erros'):
+                        exemplos.append(f"Linha {linha['linha']}: {linha['erros'][0]}")
+                resumo_erros = ' | '.join(exemplos)
+                if len(erros_resultado) > 3:
+                    resumo_erros = (resumo_erros + ' ...') if resumo_erros else '...'
+
+                mensagem = f"{resumo['falha']} linha(s) apresentaram erro e foram ignoradas."
+                if resumo_erros:
+                    mensagem += f" Ex.: {resumo_erros}"
+
+                flash(mensagem, 'warning')
 
             session['resultado_importacao_pedidos'] = resultado
             return redirect(url_for('pedidos.importar_pedidos'))

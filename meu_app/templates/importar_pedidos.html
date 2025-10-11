@@ -10,14 +10,15 @@
 {% if resultado_importacao %}
 <div class="import-result-card">
     <h3>📊 Resumo da Importação</h3>
-    {% set resumo = resultado_importacao.resumo %}
+    {% set resumo = resultado_importacao.resumo | default({}, true) %}
+    {% set erros = resultado_importacao.resultados | default([], true) %}
     <div class="summary-grid">
-        <div class="summary-item"><strong>Linhas Processadas:</strong> {{ resumo.total_linhas }}</div>
-        <div class="summary-item success"><strong>Pedidos Criados:</strong> {{ resumo.pedidos_criados }}</div>
-        <div class="summary-item error"><strong>Linhas com Erro:</strong> {{ resumo.falha }}</div>
+        <div class="summary-item"><strong>{{ resumo.total_linhas | default(0) }}</strong>Linhas processadas</div>
+        <div class="summary-item success"><strong>{{ resumo.pedidos_criados | default(0) }}</strong>Pedidos criados</div>
+        <div class="summary-item error"><strong>{{ resumo.falha | default(0) }}</strong>Linhas com erro</div>
     </div>
 
-    {% if resultado_importacao.resultados %}
+    {% if erros %}
         <div class="import-errors">
             <h4>⚠️ Detalhes dos Erros</h4>
             <p>As seguintes linhas não puderam ser importadas. Corrija-as na sua planilha e tente novamente.</p>
@@ -31,16 +32,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for res in resultado_importacao.resultados %}
+                        {% for res in erros %}
                         <tr>
                             <td>{{ res.linha }}</td>
                             <td>
+                                {% set dados = res.dados or {} %}
                                 <small>
-                                    <strong>Cliente:</strong> {{ res.dados.cliente_nome }}<br>
-                                    <strong>Produto:</strong> {{ res.dados.produto_nome }}<br>
-                                    <strong>Qtd:</strong> {{ res.dados.quantidade }}, 
-                                    <strong>Preço:</strong> {{ res.dados.preco_venda }}, 
-                                    <strong>Data:</strong> {{ res.dados.data }}
+                                    <strong>Cliente:</strong> {{ dados.get('cliente_nome', '') }}<br>
+                                    <strong>Produto:</strong> {{ dados.get('produto_nome', '') }}<br>
+                                    <strong>Qtd:</strong> {{ dados.get('quantidade', '') }}, 
+                                    <strong>Preço:</strong> {{ dados.get('preco_venda', '') }}, 
+                                    <strong>Data:</strong> {{ dados.get('data', '') }}
                                 </small>
                             </td>
                             <td>
@@ -56,6 +58,8 @@
                 </table>
             </div>
         </div>
+    {% else %}
+        <p class="import-summary success-text">Nenhum erro foi encontrado. Todos os registros válidos foram importados.</p>
     {% endif %}
 </div>
 {% endif %}
@@ -186,6 +190,11 @@ LUCIANO MOURA,BUDWEISER LATA 350ML,280,37.00,16/01/2024</pre>
     .import-summary {
         margin: 10px 0;
         color: #495057;
+    }
+
+    .import-summary.success-text {
+        color: #28a745;
+        font-weight: 600;
     }
 
     .import-errors h4 {
