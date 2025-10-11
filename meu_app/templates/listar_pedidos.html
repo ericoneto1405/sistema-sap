@@ -11,7 +11,7 @@
     </div>
 </div>
 
-<form method="get" style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+<form method="get" style="margin-bottom: 20px; display: flex; align-items: flex-end; gap: 15px; flex-wrap: wrap;">
     <div>
         <label>Status:</label><br>
         <select name="filtro" onchange="this.form.submit()">
@@ -33,7 +33,7 @@
             <input type="date" name="data_fim" value="{{ data_fim }}" id="data_fim">
         </div>
 
-        <div style="align-self: center; margin-bottom: 8px; font-weight: bold; color: #6c757d;">OU</div>
+        <div style="margin-bottom: 8px; font-weight: bold; color: #6c757d;">OU</div>
 
         <div>
             <label>Mês/Ano Inteiro:</label><br>
@@ -41,7 +41,7 @@
         </div>
     </div>
 
-    <div style="align-self: flex-end;">
+    <div>
         <button type="submit" class="botao">Filtrar</button>
     </div>
 </form>
