@@ -23,19 +23,42 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-body">
-                            <form method="GET" class="form-inline">
-                                <label for="periodo" class="mr-2">Período:</label>
-                                <select name="periodo" id="periodo" class="form-control mr-2">
-                                    <option value="todos" {{ 'selected' if periodo_atual == 'todos' }}>Todo o Período</option>
-                                    <option value="ultimo_mes" {{ 'selected' if periodo_atual == 'ultimo_mes' }}>Último Mês</option>
-                                    <option value="ultimos_3_meses" {{ 'selected' if periodo_atual == 'ultimos_3_meses' }}>Últimos 3 Meses</option>
-                                    <option value="ultimos_6_meses" {{ 'selected' if periodo_atual == 'ultimos_6_meses' }}>Últimos 6 Meses</option>
-                                    <option value="ultimo_ano" {{ 'selected' if periodo_atual == 'ultimo_ano' }}>Último Ano</option>
-                                </select>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-filter"></i> Filtrar
-                                </button>
+                            <form method="GET" class="row g-3 align-items-end">
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="periodo" class="form-label">Período rápido</label>
+                                    <select name="periodo" id="periodo" class="form-control">
+                                        <option value="todos" {{ 'selected' if periodo_atual == 'todos' }}>Todo o Período</option>
+                                        <option value="ultimo_mes" {{ 'selected' if periodo_atual == 'ultimo_mes' }}>Último Mês</option>
+                                        <option value="ultimos_3_meses" {{ 'selected' if periodo_atual == 'ultimos_3_meses' }}>Últimos 3 Meses</option>
+                                        <option value="ultimos_6_meses" {{ 'selected' if periodo_atual == 'ultimos_6_meses' }}>Últimos 6 Meses</option>
+                                        <option value="ultimo_ano" {{ 'selected' if periodo_atual == 'ultimo_ano' }}>Último Ano</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="data_inicio" class="form-label">Data inicial</label>
+                                    <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}" class="form-control">
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="data_fim" class="form-label">Data final</label>
+                                    <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}" class="form-control">
+                                </div>
+                                <div class="col-md-3 col-sm-6 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary flex-grow-1">
+                                        <i class="fas fa-filter"></i> Filtrar
+                                    </button>
+                                    {% if data_inicio or data_fim %}
+                                    <a href="{{ url_for('vendedor.rankings') }}" class="btn btn-outline-secondary">
+                                        Limpar
+                                    </a>
+                                    {% endif %}
+                                </div>
                             </form>
+                            {% set intervalo = rankings.intervalo %}
+                            {% if intervalo and (intervalo.inicio or intervalo.fim) %}
+                            <small class="text-muted d-block mt-2">
+                                Exibindo dados de {{ intervalo.inicio or 'início' }} até {{ intervalo.fim or 'hoje' }}.
+                            </small>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
