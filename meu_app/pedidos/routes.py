@@ -354,14 +354,26 @@ def importar_pedidos():
                 return redirect(url_for('pedidos.importar_pedidos'))
 
             df.columns = [str(col).strip().lower() for col in df.columns]
-            colunas_necessarias = ['cliente_nome', 'produto_nome', 'quantidade', 'preco_venda', 'data']
-            colunas_faltantes = [col for col in colunas_necessarias if col not in df.columns]
 
-            if colunas_faltantes:
-                flash(f'Colunas faltantes no arquivo: {", ".join(colunas_faltantes)}.', 'error')
+            colunas_base = {'produto_nome', 'quantidade', 'preco_venda', 'data'}
+            faltantes_base = [col for col in colunas_base if col not in df.columns]
+            if faltantes_base:
+                flash(f'Colunas faltantes no arquivo: {", ".join(faltantes_base)}.', 'error')
                 return redirect(url_for('pedidos.importar_pedidos'))
 
-            resultado = PedidoService.processar_planilha_importacao(df[colunas_necessarias])
+            possui_nome = 'cliente_nome' in df.columns
+            possui_fantasia = 'cliente_fantasia' in df.columns
+            if not possui_nome and not possui_fantasia:
+                flash('Inclua a coluna "cliente_nome" ou "cliente_fantasia" na planilha.', 'error')
+                return redirect(url_for('pedidos.importar_pedidos'))
+
+            colunas_para_processar = ['produto_nome', 'quantidade', 'preco_venda', 'data']
+            if possui_nome:
+                colunas_para_processar.append('cliente_nome')
+            if possui_fantasia:
+                colunas_para_processar.append('cliente_fantasia')
+
+            resultado = PedidoService.processar_planilha_importacao(df[colunas_para_processar])
             
             resumo = resultado.get('resumo', {})
             erros_resultado = resultado.get('resultados', [])

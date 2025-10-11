@@ -39,6 +39,9 @@
                                 {% set dados = res.dados or {} %}
                                 <small>
                                     <strong>Cliente:</strong> {{ dados.get('cliente_nome', '') }}<br>
+                                    {% if dados.get('cliente_fantasia') %}
+                                        <strong>Fantasia:</strong> {{ dados.get('cliente_fantasia') }}<br>
+                                    {% endif %}
                                     <strong>Produto:</strong> {{ dados.get('produto_nome', '') }}<br>
                                     <strong>Qtd:</strong> {{ dados.get('quantidade', '') }}, 
                                     <strong>Preço:</strong> {{ dados.get('preco_venda', '') }}, 
@@ -73,7 +76,8 @@
             <h4>📊 Formato do Arquivo</h4>
             <p>O arquivo pode ser CSV ou Excel (.xlsx, .xls) e deve conter as seguintes colunas:</p>
             <ul>
-                <li><strong>cliente_nome</strong>: Nome do cliente exatamente como está cadastrado</li>
+                <li><strong>cliente_nome</strong>: Nome do cliente exatamente como está cadastrado <em>(obrigatório se não informar a coluna fantasia)</em></li>
+                <li><strong>cliente_fantasia</strong> <span class="help-text">(opcional)</span>: Nome fantasia/apelido do cliente</li>
                 <li><strong>produto_nome</strong>: Nome do produto exatamente como está cadastrado</li>
                 <li><strong>quantidade</strong>: Quantidade do produto <span class="help-text">(número inteiro)</span></li>
                 <li><strong>preco_venda</strong>: Preço de venda unitário <span class="help-text">(use ponto: 25.50)</span></li>
@@ -81,23 +85,24 @@
             </ul>
             <div class="alert-info">
                 <strong>⚠️ Atenção:</strong> Use os nomes exatamente como aparecem nas telas de Clientes e Produtos. 
-                O sistema tenta ignorar acentos e diferenças de maiúsculas/minúsculas, mas nomes duplicados causarão erros.
+                Você pode informar o nome oficial, o nome fantasia ou ambos — o sistema aceita a primeira correspondência válida.
+                Se existir mais de um cadastro com o mesmo nome/fantasia, um alerta será exibido.
             </div>
         </div>
 
         <div class="instruction-section">
             <h4>📝 Exemplo de Arquivo CSV</h4>
             <div class="code-block">
-                <pre>cliente_nome,produto_nome,quantidade,preco_venda,data
-KAIQUE ITATIM,SKOL LATA 350ML,286,31.00,2024-01-15
-KAIQUE ITATIM,BRAHMA CHOPP LATA 350 ML,286,32.00,2024-01-15
-LUCIANO MOURA,RED BULL ENERGY DRINK 250 ML,144,150.00,16/01/2024
-LUCIANO MOURA,BUDWEISER LATA 350ML,280,37.00,16/01/2024</pre>
+                <pre>cliente_nome,cliente_fantasia,produto_nome,quantidade,preco_venda,data
+CAIQUE ANDRADE NASCIMENTO,KAIQUE ITATIM,SKOL LATA 350ML,286,31.00,15/01/2024
+CAIQUE ANDRADE NASCIMENTO,KAIQUE ITATIM,BRAHMA CHOPP LATA 350 ML,286,32.00,15/01/2024
+LUCIANO VIEIRA SILVA DE ARAUJO,LUCIANO MOURA,RED BULL ENERGY DRINK 250 ML,144,150.00,16/01/2024
+LUCIANO VIEIRA SILVA DE ARAUJO,LUCIANO MOURA,BUDWEISER LATA 350ML,280,37.00,16/01/2024</pre>
             </div>
             <p class="example-explanation">
                 <strong>Como interpretar:</strong><br>
-                • Linhas 2-3: Cliente "KAIQUE ITATIM" pediu 2 produtos no mesmo dia → <strong>1 pedido com 2 itens</strong><br>
-                • Linhas 4-5: Cliente "LUCIANO MOURA" pediu 2 produtos no mesmo dia → <strong>1 pedido com 2 itens</strong>
+                • Linhas 2-3: Cliente oficial "CAIQUE ANDRADE NASCIMENTO" (fantasia "KAIQUE ITATIM") pediu 2 produtos no mesmo dia → <strong>1 pedido com 2 itens</strong><br>
+                • Linhas 4-5: Cliente "LUCIANO VIEIRA SILVA DE ARAUJO" (fantasia "LUCIANO MOURA") pediu 2 produtos no mesmo dia → <strong>1 pedido com 2 itens</strong>
             </p>
             <div class="download-example">
                 <a href="{{ url_for('pedidos.download_exemplo') }}" class="btn-download">

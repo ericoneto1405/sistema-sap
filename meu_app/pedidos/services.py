@@ -538,9 +538,12 @@ class PedidoService:
             ascii_safe = unicodedata.normalize('NFKD', str(valor)).encode('ASCII', 'ignore').decode('ASCII')
             return ascii_safe.strip().lower()
 
-        clientes_map = defaultdict(list)
+        clientes_nome_map = defaultdict(list)
+        clientes_fantasia_map = defaultdict(list)
         for cli in Cliente.query.all():
-            clientes_map[normalizar_nome(cli.nome)].append(cli)
+            clientes_nome_map[normalizar_nome(cli.nome)].append(cli)
+            if cli.fantasia:
+                clientes_fantasia_map[normalizar_nome(cli.fantasia)].append(cli)
         
         produtos_map = defaultdict(list)
         for prod in Produto.query.all():
@@ -567,15 +570,23 @@ class PedidoService:
             erros_linha = []
             
             # Validações de campo
-            cliente_nome = row.get('cliente_nome')
+            cliente_nome = row.get('cliente_nome', None)
+            cliente_fantasia = row.get('cliente_fantasia', None)
             produto_nome = row.get('produto_nome')
             quantidade = row.get('quantidade')
             preco_venda = row.get('preco_venda')
             data = row.get('data')
             data_normalizada = None
 
-            if pd.isna(cliente_nome) or not str(cliente_nome).strip():
+            cliente_nome_str = str(cliente_nome).strip() if cliente_nome is not None else ''
+            cliente_fantasia_str = str(cliente_fantasia).strip() if cliente_fantasia is not None else ''
+
+            if not cliente_nome_str and not cliente_fantasia_str:
+                erros_linha.append("Informe ao menos 'cliente_nome' ou 'cliente_fantasia'.")
+            if cliente_nome is not None and not cliente_nome_str:
                 erros_linha.append("Coluna 'cliente_nome' está vazia.")
+            if cliente_fantasia is not None and not cliente_fantasia_str:
+                erros_linha.append("Coluna 'cliente_fantasia' está vazia.")
             if pd.isna(produto_nome) or not str(produto_nome).strip():
                 erros_linha.append("Coluna 'produto_nome' está vazia.")
             if pd.isna(data):
@@ -610,18 +621,30 @@ class PedidoService:
                 continue
 
             # Validação de Negócio
-            cliente_lista = clientes_map.get(normalizar_nome(cliente_nome), [])
-            if not cliente_lista:
-                erros_linha.append(f"Cliente '{cliente_nome}' não encontrado.")
-            elif len(cliente_lista) > 1:
-                ids = ', '.join(str(cli.id) for cli in cliente_lista[:5])
-                if len(cliente_lista) > 5:
+            candidatos_cliente = []
+            if cliente_nome_str:
+                candidatos_cliente.extend(clientes_nome_map.get(normalizar_nome(cliente_nome_str), []))
+            if cliente_fantasia_str:
+                candidatos_cliente.extend(clientes_fantasia_map.get(normalizar_nome(cliente_fantasia_str), []))
+
+            clientes_unicos = list({cli.id: cli for cli in candidatos_cliente}.values())
+
+            if not clientes_unicos:
+                if cliente_fantasia_str and not cliente_nome_str:
+                    erros_linha.append(f"Cliente com fantasia '{cliente_fantasia_str}' não encontrado.")
+                elif cliente_nome_str and not cliente_fantasia_str:
+                    erros_linha.append(f"Cliente '{cliente_nome_str}' não encontrado.")
+                else:
+                    erros_linha.append(
+                        f"Cliente não encontrado (nome: '{cliente_nome_str}' | fantasia: '{cliente_fantasia_str}')."
+                    )
+            elif len(clientes_unicos) > 1:
+                ids = ', '.join(str(cli.id) for cli in clientes_unicos[:5])
+                if len(clientes_unicos) > 5:
                     ids += ', ...'
-                erros_linha.append(
-                    f"Cliente '{cliente_nome}' não é único. Ajuste o nome cadastrado ou use um apelido único (IDs: {ids})."
-                )
+                erros_linha.append(f"Mais de um cliente encontrado para os dados informados (IDs: {ids}).")
             else:
-                cliente = cliente_lista[0]
+                cliente = clientes_unicos[0]
 
             produto_lista = produtos_map.get(normalizar_nome(produto_nome), [])
             if not produto_lista:
