@@ -45,7 +45,9 @@ class FileUploadValidator:
             'image/jpg',
             'image/png',
             'image/gif',
-            'image/webp'
+            'image/webp',
+            'image/heic',
+            'image/heif'
         ],
         'document': [
             'application/pdf',
