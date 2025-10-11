@@ -80,6 +80,64 @@ class NotaFiscalReaderService:
         return resumo
 
     @staticmethod
+    def _extract_itens(texto: str) -> list:
+        """
+        Extrai itens da DANFE com base em heurísticas simples.
+        """
+        linhas = [linha.strip() for linha in texto.splitlines() if linha.strip()]
+        itens = []
+
+        num_regex = re.compile(r'^\d+(?:[.,]\d{3})*(?:[.,]\d{2})$')
+        valor_regex = re.compile(r'\d+(?:[.,]\d{3})*(?:[.,]\d{2})')
+
+        for linha in linhas:
+            partes = linha.split()
+            if len(partes) < 4:
+                continue
+
+            codigo = partes[0]
+            if not re.match(r'^\d{3,}$', codigo):
+                continue
+
+            valores = [p for p in partes if valor_regex.fullmatch(p)]
+            if not valores:
+                continue
+
+            valor_total_raw = valores[-1]
+            try:
+                valor_total = NotaFiscalReaderService._parse_currency(valor_total_raw)
+            except (ValueError, TypeError):
+                continue
+
+            if valor_total is None or valor_total <= 0:
+                continue
+
+            valor_unitario = None
+            if len(valores) >= 2:
+                valor_unitario_raw = valores[-2]
+                valor_unitario = NotaFiscalReaderService._parse_currency(valor_unitario_raw)
+
+            indice_inicio_descricao = 1
+            indice_fim_descricao = len(partes) - len(valores)
+            if indice_fim_descricao <= indice_inicio_descricao:
+                descricao = ' '.join(partes[indice_inicio_descricao:])
+            else:
+                descricao = ' '.join(partes[indice_inicio_descricao:indice_fim_descricao])
+
+            descricao = descricao.strip(' -;')
+            if not descricao:
+                continue
+
+            itens.append({
+                'codigo': codigo,
+                'descricao': descricao.title(),
+                'valor_unitario': valor_unitario,
+                'valor_total': valor_total
+            })
+
+        return itens
+
+    @staticmethod
     def process_upload(uploaded_file) -> Dict[str, object]:
         """
         Processa o upload, executa OCR e retorna dados estruturados.
@@ -96,7 +154,9 @@ class NotaFiscalReaderService:
                 'ok': False,
                 'mensagem': error_msg,
                 'texto': '',
-                'resumo': {}
+                'resumo': {},
+                'itens': [],
+                'valor_total_itens': None
             }
 
         uploaded_file.stream.seek(0)
@@ -106,17 +166,23 @@ class NotaFiscalReaderService:
                 'ok': False,
                 'mensagem': msg,
                 'texto': '',
-                'resumo': {}
+                'resumo': {},
+                'itens': [],
+                'valor_total_itens': None
             }
 
         try:
             texto = VisionOcrService.extract_text(caminho)
             resumo = NotaFiscalReaderService._extract_summary(texto or '')
+            itens = NotaFiscalReaderService._extract_itens(texto or '')
+            valor_total_itens = sum(item['valor_total'] for item in itens if item.get('valor_total'))
             return {
                 'ok': True,
                 'mensagem': 'Leitura concluída com sucesso.',
                 'texto': texto,
-                'resumo': resumo
+                'resumo': resumo,
+                'itens': itens,
+                'valor_total_itens': valor_total_itens if itens else None
             }
         except OcrProcessingError as e:
             current_app.logger.error(f"Erro ao processar DANFE: {e}")
@@ -124,7 +190,9 @@ class NotaFiscalReaderService:
                 'ok': False,
                 'mensagem': str(e),
                 'texto': '',
-                'resumo': {}
+                'resumo': {},
+                'itens': [],
+                'valor_total_itens': None
             }
         except Exception as e:
             current_app.logger.exception("Erro inesperado ao processar a DANFE")
@@ -132,7 +200,9 @@ class NotaFiscalReaderService:
                 'ok': False,
                 'mensagem': f"Erro inesperado ao processar a DANFE: {e}",
                 'texto': '',
-                'resumo': {}
+                'resumo': {},
+                'itens': [],
+                'valor_total_itens': None
             }
         finally:
             try:

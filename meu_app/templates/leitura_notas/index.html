@@ -66,6 +66,48 @@
                             </dd>
                         </dl>
                     </div>
+                    {% if resultado.itens %}
+                    <div class="itens-nota">
+                        <h4>Itens identificados</h4>
+                        {% if resultado.valor_total_itens %}
+                        <p class="itens-total">Soma dos itens: {{ resultado.valor_total_itens|currency_brl }}</p>
+                        {% endif %}
+                        <div class="table-responsive">
+                            <table class="itens-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Descrição</th>
+                                        <th>Preço Unitário</th>
+                                        <th>Valor Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in resultado.itens %}
+                                    <tr>
+                                        <td>{{ item.codigo }}</td>
+                                        <td>{{ item.descricao }}</td>
+                                        <td>
+                                            {% if item.valor_unitario %}
+                                                {{ item.valor_unitario|currency_brl }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.valor_total %}
+                                                {{ item.valor_total|currency_brl }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="texto-bruto">
                         <h4>Texto completo reconhecido</h4>
                         <textarea readonly rows="18">{{ resultado.texto }}</textarea>
@@ -152,6 +194,46 @@
     font-family: 'Courier New', monospace;
     font-size: 0.9rem;
     background: #f8f9fa;
+}
+
+.itens-nota {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.itens-total {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.itens-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #dee2e6;
+}
+
+.itens-table th,
+.itens-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.itens-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+.itens-table tbody tr:nth-child(even) {
+    background: #fdfdfe;
 }
 
 .resumo-nota dl {
