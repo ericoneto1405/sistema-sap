@@ -674,6 +674,7 @@ class PedidoService:
             dados_extras: Dados extras para o log
         """
         try:
+            from ..models import LogAtividade
             if 'usuario_id' in session:
                 # Converter valores Decimal para float antes da serialização JSON
                 if dados_extras:
