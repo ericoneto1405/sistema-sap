@@ -537,68 +537,146 @@ class PedidoService:
             ascii_safe = unicodedata.normalize('NFKD', str(valor)).encode('ASCII', 'ignore').decode('ASCII')
             return ascii_safe.strip().lower()
 
-        clientes_map = {normalizar_nome(cli.nome): cli for cli in Cliente.query.all()}
-        produtos_map = {normalizar_nome(prod.nome): prod for prod in Produto.query.all()}
-        
+        def parse_quantidade(valor_raw):
+            try:
+                valor_str = str(valor_raw).strip()
+                if not valor_str:
+                    return None, "Quantidade está vazia."
+                valor_dec = Decimal(valor_str.replace('.', '').replace(',', '.'))
+                if valor_dec != int(valor_dec):
+                    return None, "Quantidade deve ser um número inteiro."
+                valor_int = int(valor_dec)
+                if valor_int <= 0:
+                    return None, "Quantidade deve ser maior que zero."
+                return valor_int, None
+            except (ValueError, TypeError, InvalidOperation):
+                return None, f"Quantidade '{valor_raw}' é inválida."
+
+        def parse_preco(valor_raw):
+            try:
+                texto = str(valor_raw).strip()
+                if not texto:
+                    return None, "Preço de venda está vazio."
+                texto = texto.replace('R$', '').replace('r$', '').replace(' ', '')
+                if '.' in texto and ',' in texto:
+                    texto = texto.replace('.', '').replace(',', '.')
+                elif ',' in texto and '.' not in texto:
+                    texto = texto.replace(',', '.')
+                preco = Decimal(texto)
+                if preco <= 0:
+                    return None, "Preço de venda deve ser maior que zero."
+                return preco, None
+            except (ValueError, TypeError, InvalidOperation):
+                return None, f"Preço de venda '{valor_raw}' é inválido."
+
+        def parse_data(valor_raw):
+            try:
+                if pd.isna(valor_raw):
+                    return None, "Coluna 'data' está vazia."
+                dayfirst = isinstance(valor_raw, str) and '/' in valor_raw
+                valor_dt = pd.to_datetime(valor_raw, errors='raise', dayfirst=dayfirst)
+                return valor_dt.to_pydatetime(), None
+            except Exception:
+                return None, f"Data '{valor_raw}' é inválida. Use formato AAAA-MM-DD ou DD/MM/AAAA."
+
+        # Detectar modo de identificação (por nomes ou por IDs)
+        colunas = [str(c).strip().lower() for c in df.columns]
+        usar_nomes = {'cliente_nome', 'produto_nome'}.issubset(set(colunas))
+        usar_ids = {'cliente_id', 'produto_id'}.issubset(set(colunas))
+
+        # Mapas de busca
+        clientes = Cliente.query.all()
+        produtos = Produto.query.all()
+        clientes_por_nome = {normalizar_nome(cli.nome): cli for cli in clientes}
+        produtos_por_nome = {normalizar_nome(prod.nome): prod for prod in produtos}
+        clientes_por_id = {cli.id: cli for cli in clientes}
+        produtos_por_id = {prod.id: prod for prod in produtos}
+
         resultados = []
         pedidos_para_criar = defaultdict(list)
 
         for index, row in df.iterrows():
             linha = index + 2  # Linha da planilha para o usuário
             erros_linha = []
-            
-            # Validações de campo
-            cliente_nome = row.get('cliente_nome')
-            produto_nome = row.get('produto_nome')
-            quantidade = row.get('quantidade')
-            preco_venda = row.get('preco_venda')
-            data = row.get('data')
 
-            if pd.isna(cliente_nome) or not str(cliente_nome).strip():
-                erros_linha.append("Coluna 'cliente_nome' está vazia.")
-            if pd.isna(produto_nome) or not str(produto_nome).strip():
-                erros_linha.append("Coluna 'produto_nome' está vazia.")
-            if pd.isna(data):
-                erros_linha.append("Coluna 'data' está vazia.")
+            # Campos brutos
+            quantidade_raw = row.get('quantidade')
+            preco_venda_raw = row.get('preco_venda')
+            data_raw = row.get('data')
 
-            try:
-                quantidade = int(Decimal(str(quantidade)))
-                if quantidade <= 0:
-                    erros_linha.append("Quantidade deve ser maior que zero.")
-            except (ValueError, TypeError, InvalidOperation):
-                erros_linha.append(f"Quantidade '{quantidade}' é inválida.")
+            # Validar presença de identificadores
+            cliente = None
+            produto = None
+            if usar_nomes:
+                cliente_nome = row.get('cliente_nome')
+                produto_nome = row.get('produto_nome')
+                if pd.isna(cliente_nome) or not str(cliente_nome).strip():
+                    erros_linha.append("Coluna 'cliente_nome' está vazia.")
+                if pd.isna(produto_nome) or not str(produto_nome).strip():
+                    erros_linha.append("Coluna 'produto_nome' está vazia.")
+            elif usar_ids:
+                cliente_id_raw = row.get('cliente_id')
+                produto_id_raw = row.get('produto_id')
+                if pd.isna(cliente_id_raw) or str(cliente_id_raw).strip() == '':
+                    erros_linha.append("Coluna 'cliente_id' está vazia.")
+                if pd.isna(produto_id_raw) or str(produto_id_raw).strip() == '':
+                    erros_linha.append("Coluna 'produto_id' está vazia.")
+            else:
+                resultados.append({
+                    'linha': linha,
+                    'status': 'Falha',
+                    'erros': [
+                        "Cabeçalho inválido. Use (cliente_nome, produto_nome, quantidade, preco_venda, data) ou (cliente_id, produto_id, quantidade, preco_venda, data)."
+                    ],
+                    'dados': row.to_dict()
+                })
+                continue
 
-            try:
-                preco_venda = Decimal(str(preco_venda).replace(',', '.'))
-                if preco_venda <= 0:
-                    erros_linha.append("Preço de venda deve ser maior que zero.")
-            except (ValueError, TypeError, InvalidOperation):
-                erros_linha.append(f"Preço de venda '{preco_venda}' é inválido.")
+            # Validar quantidade / preço / data
+            quantidade, err_qtd = parse_quantidade(quantidade_raw)
+            if err_qtd:
+                erros_linha.append(err_qtd)
 
-            try:
-                data = pd.to_datetime(data, errors='raise').to_pydatetime()
-            except ValueError:
-                erros_linha.append(f"Data '{data}' é inválida. Use formato AAAA-MM-DD.")
+            preco_venda, err_preco = parse_preco(preco_venda_raw)
+            if err_preco:
+                erros_linha.append(err_preco)
+
+            data_dt, err_data = parse_data(data_raw)
+            if err_data:
+                erros_linha.append(err_data)
+
+            # Resolver cliente e produto
+            if not erros_linha:
+                if usar_nomes:
+                    cliente = clientes_por_nome.get(normalizar_nome(cliente_nome))
+                    if not cliente:
+                        erros_linha.append(f"Cliente '{cliente_nome}' não encontrado.")
+                    produto = produtos_por_nome.get(normalizar_nome(produto_nome))
+                    if not produto:
+                        erros_linha.append(f"Produto '{produto_nome}' não encontrado.")
+                else:  # usar_ids
+                    try:
+                        cliente_id = int(Decimal(str(cliente_id_raw)))
+                        produto_id = int(Decimal(str(produto_id_raw)))
+                    except (ValueError, TypeError, InvalidOperation):
+                        cliente_id = None
+                        produto_id = None
+                        erros_linha.append("IDs de cliente/produto inválidos.")
+                    if cliente_id is not None:
+                        cliente = clientes_por_id.get(cliente_id)
+                        if not cliente:
+                            erros_linha.append(f"Cliente ID '{cliente_id_raw}' não encontrado.")
+                    if produto_id is not None:
+                        produto = produtos_por_id.get(produto_id)
+                        if not produto:
+                            erros_linha.append(f"Produto ID '{produto_id_raw}' não encontrado.")
 
             if erros_linha:
                 resultados.append({'linha': linha, 'status': 'Falha', 'erros': erros_linha, 'dados': row.to_dict()})
                 continue
 
-            # Validação de Negócio
-            cliente = clientes_map.get(normalizar_nome(cliente_nome))
-            if not cliente:
-                erros_linha.append(f"Cliente '{cliente_nome}' não encontrado.")
-
-            produto = produtos_map.get(normalizar_nome(produto_nome))
-            if not produto:
-                erros_linha.append(f"Produto '{produto_nome}' não encontrado.")
-
-            if erros_linha:
-                resultados.append({'linha': linha, 'status': 'Falha', 'erros': erros_linha, 'dados': row.to_dict()})
-                continue
-            
-            # Agrupamento para criação de pedido
-            chave_pedido = (cliente.id, data.date())
+            # Agrupar para criação
+            chave_pedido = (cliente.id, data_dt.date())
             pedidos_para_criar[chave_pedido].append({
                 'produto': produto,
                 'quantidade': quantidade,

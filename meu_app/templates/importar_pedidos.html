@@ -36,11 +36,13 @@
                             <td>{{ res.linha }}</td>
                             <td>
                                 <small>
-                                    <strong>Cliente:</strong> {{ res.dados.cliente_nome }}<br>
-                                    <strong>Produto:</strong> {{ res.dados.produto_nome }}<br>
-                                    <strong>Qtd:</strong> {{ res.dados.quantidade }}, 
-                                    <strong>Preço:</strong> {{ res.dados.preco_venda }}, 
-                                    <strong>Data:</strong> {{ res.dados.data }}
+                                    {% set cliente_val = res.dados.get('cliente_nome') or res.dados.get('cliente_id') %}
+                                    {% set produto_val = res.dados.get('produto_nome') or res.dados.get('produto_id') %}
+                                    <strong>Cliente:</strong> {{ cliente_val if cliente_val is not none else '-' }}<br>
+                                    <strong>Produto:</strong> {{ produto_val if produto_val is not none else '-' }}<br>
+                                    <strong>Qtd:</strong> {{ res.dados.get('quantidade', '-') }}, 
+                                    <strong>Preço:</strong> {{ res.dados.get('preco_venda', '-') }}, 
+                                    <strong>Data:</strong> {{ res.dados.get('data', '-') }}
                                 </small>
                             </td>
                             <td>
@@ -67,28 +69,43 @@
         
         <div class="instruction-section">
             <h4>📊 Formato do Arquivo</h4>
-            <p>O arquivo pode ser CSV ou Excel (.xlsx, .xls) e deve conter as seguintes colunas:</p>
+            <p>O arquivo pode ser CSV ou Excel (.xlsx, .xls). Você pode usar <strong>um</strong> dos dois formatos abaixo:</p>
             <ul>
-                <li><strong>cliente_nome</strong>: Nome do cliente exatamente como está cadastrado</li>
-                <li><strong>produto_nome</strong>: Nome do produto exatamente como está cadastrado</li>
-                <li><strong>quantidade</strong>: Quantidade do produto <span class="help-text">(número inteiro)</span></li>
-                <li><strong>preco_venda</strong>: Preço de venda unitário <span class="help-text">(use ponto: 25.50)</span></li>
-                <li><strong>data</strong>: Data do pedido <span class="help-text">(formato: YYYY-MM-DD ou DD/MM/YYYY)</span></li>
+                <li><strong>Formato por NOME</strong> (quando não conhece os IDs):
+                    <ul>
+                        <li><strong>cliente_nome</strong>: Nome do cliente exatamente como está cadastrado</li>
+                        <li><strong>produto_nome</strong>: Nome do produto exatamente como está cadastrado</li>
+                        <li><strong>quantidade</strong>: Quantidade do produto <span class="help-text">(número inteiro)</span></li>
+                        <li><strong>preco_venda</strong>: Preço unitário <span class="help-text">(use ponto como decimal, ex: 25.50)</span></li>
+                        <li><strong>data</strong>: Data do pedido <span class="help-text">(YYYY-MM-DD ou DD/MM/YYYY)</span></li>
+                    </ul>
+                </li>
+                <li><strong>Formato por ID</strong> (para migrações com mapeamento de IDs):
+                    <ul>
+                        <li><strong>cliente_id</strong>, <strong>produto_id</strong>, <strong>quantidade</strong>, <strong>preco_venda</strong>, <strong>data</strong></li>
+                    </ul>
+                </li>
             </ul>
             <div class="alert-info">
-                <strong>⚠️ Atenção:</strong> Use os nomes exatamente como aparecem nas telas de Clientes e Produtos. 
-                O sistema tenta ignorar acentos e diferenças de maiúsculas/minúsculas, mas nomes duplicados causarão erros.
+                <strong>⚠️ Atenção:</strong> Em CSV brasileiro é comum usar ponto e vírgula (;). O sistema tenta detectar automaticamente. 
+                Para nomes, copie do sistema para evitar diferenças; para IDs, garanta que existam.
             </div>
         </div>
 
         <div class="instruction-section">
-            <h4>📝 Exemplo de Arquivo CSV</h4>
+            <h4>📝 Exemplo de Arquivo CSV (por NOME)</h4>
             <div class="code-block">
                 <pre>cliente_nome,produto_nome,quantidade,preco_venda,data
 KAIQUE ITATIM,SKOL LATA 350ML,286,31.00,2024-01-15
 KAIQUE ITATIM,BRAHMA CHOPP LATA 350 ML,286,32.00,2024-01-15
 LUCIANO MOURA,RED BULL ENERGY DRINK 250 ML,144,150.00,16/01/2024
 LUCIANO MOURA,BUDWEISER LATA 350ML,280,37.00,16/01/2024</pre>
+            </div>
+            <div class="code-block">
+                <pre>cliente_id,produto_id,quantidade,preco_venda,data
+1,5,10,25.50,2024-01-15
+1,3,5,15.00,2024-01-15
+2,7,20,8.75,2024-01-16</pre>
             </div>
             <p class="example-explanation">
                 <strong>Como interpretar:</strong><br>

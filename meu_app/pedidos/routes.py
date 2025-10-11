@@ -359,21 +359,56 @@ def importar_pedidos():
                 flash('O arquivo enviado está vazio.', 'error')
                 return redirect(url_for('pedidos.importar_pedidos'))
 
-            df = pd.read_csv(BytesIO(conteudo)) if extensao == 'csv' else pd.read_excel(BytesIO(conteudo))
+            # Ler CSV/Excel com fallback de separador (CSV com ';' é comum em PT-BR)
+            if extensao == 'csv':
+                try:
+                    df = pd.read_csv(BytesIO(conteudo))
+                except Exception:
+                    df = pd.read_csv(BytesIO(conteudo), sep=';')
+                else:
+                    # Se leu uma coluna só e há ';' no conteúdo, tentar novamente com ';'
+                    if getattr(df, 'shape', (0, 0))[1] == 1 and b';' in conteudo:
+                        df = pd.read_csv(BytesIO(conteudo), sep=';')
+            else:
+                df = pd.read_excel(BytesIO(conteudo))
 
             if df.empty:
                 flash('O arquivo não contém linhas para importar.', 'warning')
                 return redirect(url_for('pedidos.importar_pedidos'))
 
+            # Normalizar cabeçalhos
             df.columns = [str(col).strip().lower() for col in df.columns]
-            colunas_necessarias = ['cliente_nome', 'produto_nome', 'quantidade', 'preco_venda', 'data']
-            colunas_faltantes = [col for col in colunas_necessarias if col not in df.columns]
 
-            if colunas_faltantes:
-                flash(f'Colunas faltantes no arquivo: {", ".join(colunas_faltantes)}.', 'error')
+            # Suportar dois formatos de cabeçalho: por NOME ou por ID
+            colunas_comuns = {'quantidade', 'preco_venda', 'data'}
+            formato_nomes = {'cliente_nome', 'produto_nome'} | colunas_comuns
+            formato_ids = {'cliente_id', 'produto_id'} | colunas_comuns
+
+            presentes = set(df.columns)
+            usa_nomes = formato_nomes.issubset(presentes)
+            usa_ids = formato_ids.issubset(presentes)
+
+            if not (usa_nomes or usa_ids):
+                faltando_nomes = sorted(list(formato_nomes - presentes))
+                faltando_ids = sorted(list(formato_ids - presentes))
+                msg = [
+                    'Cabeçalho inválido no arquivo.',
+                    'Você pode usar UM dos formatos abaixo:',
+                    f"• Por nomes: {', '.join(sorted(list(formato_nomes)))}",
+                    f"• Por IDs: {', '.join(sorted(list(formato_ids)))}",
+                ]
+                if faltando_nomes:
+                    msg.append(f"Faltando para formato por nomes: {', '.join(faltando_nomes)}")
+                if faltando_ids:
+                    msg.append(f"Faltando para formato por IDs: {', '.join(faltando_ids)}")
+                flash(' '.join(msg), 'error')
                 return redirect(url_for('pedidos.importar_pedidos'))
 
-            resultado = PedidoService.processar_planilha_importacao(df[colunas_necessarias])
+            # Filtrar somente as colunas necessárias conforme o formato detectado
+            colunas_necessarias = list(formato_nomes if usa_nomes else formato_ids)
+            df_filtrado = df[colunas_necessarias]
+
+            resultado = PedidoService.processar_planilha_importacao(df_filtrado)
             
             resumo = resultado.get('resumo', {})
             if resumo.get('pedidos_criados', 0) > 0:
