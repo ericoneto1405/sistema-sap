@@ -1,3 +1,4 @@
+from datetime import datetime
 from io import BytesIO
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
@@ -19,9 +20,27 @@ def listar_pedidos():
         filtro_status = request.args.get('filtro', 'todos')
         data_inicio = request.args.get('data_inicio')
         data_fim = request.args.get('data_fim')
+        mes_ano = request.args.get('mes_ano')
         ordenar_por = request.args.get('sort', 'data')
         direcao = request.args.get('direction', 'desc')
-        
+
+        if mes_ano:
+            try:
+                ano, mes = map(int, mes_ano.split('-'))
+                data_inicio_dt = datetime(ano, mes, 1)
+                # Calcula o último dia do mês
+                if mes == 12:
+                    data_fim_dt = datetime(ano + 1, 1, 1)
+                else:
+                    data_fim_dt = datetime(ano, mes + 1, 1)
+                
+                data_inicio = data_inicio_dt.strftime('%Y-%m-%d')
+                data_fim = data_fim_dt.strftime('%Y-%m-%d')
+
+            except (ValueError, TypeError):
+                flash('Formato de mês/ano inválido. Use YYYY-MM.', 'warning')
+                mes_ano = '' # Limpa para não ser enviado ao template
+
         # Validar parâmetros de ordenação
         campos_validos = ['id', 'cliente', 'data', 'valor', 'status']
         if ordenar_por not in campos_validos:
@@ -43,6 +62,7 @@ def listar_pedidos():
             filtro=filtro_status,
             data_inicio=data_inicio or '',
             data_fim=data_fim or '',
+            mes_ano=mes_ano or '',
             current_sort=ordenar_por,
             current_direction=direcao,
             necessidade_compra=necessidade_compra

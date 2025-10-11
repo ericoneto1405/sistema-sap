@@ -22,21 +22,23 @@
         </select>
     </div>
 
-    <div>
-        <label>Data Inicial:</label><br>
-        <input type="date" name="data_inicio" value="{{ data_inicio }}">
-    </div>
+    <div style="display: flex; align-items: flex-end; gap: 15px;">
+        <div>
+            <label>Data Inicial:</label><br>
+            <input type="date" name="data_inicio" value="{{ data_inicio }}" id="data_inicio">
+        </div>
 
-    <div>
-        <label>Data Final:</label><br>
-        <input type="date" name="data_fim" value="{{ data_fim }}" id="data_fim">
-    </div>
+        <div>
+            <label>Data Final:</label><br>
+            <input type="date" name="data_fim" value="{{ data_fim }}" id="data_fim">
+        </div>
 
-    <div style="align-self: center; margin-left: 5px; margin-right: 5px; font-weight: bold;">OU</div>
+        <div style="align-self: center; margin-bottom: 8px; font-weight: bold; color: #6c757d;">OU</div>
 
-    <div>
-        <label>Mês/Ano:</label><br>
-        <input type="month" name="mes_ano" id="mes_ano" value="{{ mes_ano }}">
+        <div>
+            <label>Mês/Ano Inteiro:</label><br>
+            <input type="month" name="mes_ano" id="mes_ano" value="{{ mes_ano }}">
+        </div>
     </div>
 
     <div style="align-self: flex-end;">
@@ -936,6 +938,36 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('th.sortable').forEach(th => {
         th.title = 'Clique para ordenar (crescente/decrescente)';
     });
+});
+
+// Lógica para filtros de data
+document.addEventListener('DOMContentLoaded', function() {
+    const mesAnoInput = document.getElementById('mes_ano');
+    const dataInicioInput = document.getElementById('data_inicio');
+    const dataFimInput = document.getElementById('data_fim');
+
+    // Se um mês/ano já estiver selecionado, desabilita os campos de data
+    if (mesAnoInput.value) {
+        dataInicioInput.disabled = true;
+        dataFimInput.disabled = true;
+    }
+
+    // Ao selecionar um mês/ano, limpa e desabilita os campos de data e submete
+    mesAnoInput.addEventListener('change', function() {
+        if (this.value) {
+            dataInicioInput.value = '';
+            dataFimInput.value = '';
+            this.form.submit();
+        }
+    });
+
+    // Ao interagir com os campos de data, limpa o campo de mês/ano
+    function limparMesAno() {
+        mesAnoInput.value = '';
+    }
+
+    dataInicioInput.addEventListener('input', limparMesAno);
+    dataFimInput.addEventListener('input', limparMesAno);
 });
 </script>
 {% endblock %}
