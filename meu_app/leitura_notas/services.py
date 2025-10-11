@@ -84,7 +84,23 @@ class NotaFiscalReaderService:
         """
         Processa o upload, executa OCR e retorna dados estruturados.
         """
-        sucesso, msg, caminho = FileUploadValidator.save_file(uploaded_file, 'document')
+        file_type = 'document'
+        is_valid, error_msg, metadata = FileUploadValidator.validate_file(uploaded_file, file_type)
+        if not is_valid:
+            uploaded_file.stream.seek(0)
+            is_valid, error_msg, metadata = FileUploadValidator.validate_file(uploaded_file, 'image')
+            if is_valid:
+                file_type = 'image'
+        if not is_valid:
+            return {
+                'ok': False,
+                'mensagem': error_msg,
+                'texto': '',
+                'resumo': {}
+            }
+
+        uploaded_file.stream.seek(0)
+        sucesso, msg, caminho = FileUploadValidator.save_file(uploaded_file, file_type)
         if not sucesso or not caminho:
             return {
                 'ok': False,
