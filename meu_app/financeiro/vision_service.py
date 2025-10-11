@@ -352,6 +352,33 @@ class VisionOcrService:
             if valores_filtrados:
                 return max(valores_filtrados)
         
+        # Padrão 4: valores sem centavos (ex: 158.720 ou 158 720)
+        inteiro_pattern = r'R?\$?\s*(\d{1,3}(?:[.\s]\d{3})+)(?![,\d])'
+        matches_inteiros = re.findall(inteiro_pattern, text_normalized)
+        inteiros = []
+        for match in matches_inteiros:
+            try:
+                valor = float(match.replace('.', '').replace(' ', ''))
+                if valor > 0:
+                    inteiros.append(valor)
+            except (ValueError, TypeError):
+                continue
+
+        # Padrão 5: números longos sem separadores (ex: 158720)
+        plain_inteiros = re.findall(r'R?\$?\s*(\d{5,})', text_normalized)
+        for match in plain_inteiros:
+            try:
+                valor = float(match)
+                if valor > 0:
+                    inteiros.append(valor)
+            except (ValueError, TypeError):
+                continue
+
+        if inteiros:
+            maior_inteiro = max(inteiros)
+            if maior_inteiro >= max_valor:
+                return maior_inteiro
+
         return max_valor
 
     @staticmethod

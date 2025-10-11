@@ -60,7 +60,7 @@ class FileUploadValidator:
     ALLOWED_EXTENSIONS = {
         'excel': {'.xlsx', '.xls', '.ods'},
         'csv': {'.csv', '.txt'},
-        'image': {'.jpg', '.jpeg', '.png', '.gif', '.webp'},
+        'image': {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'},
         'document': {'.pdf', '.doc', '.docx'}
     }
     
