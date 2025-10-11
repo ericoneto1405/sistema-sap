@@ -398,7 +398,7 @@
     }
 </style>
 
-<table>
+<table class="pedidos-table">
     <thead>
         <tr>
             <th class="sortable" data-sort="id">#</th>
@@ -799,16 +799,18 @@ function confirmarAcao() {
                     linha.classList.add('linha-removida');
                     setTimeout(() => {
                         linha.remove();
-                        const tbody = document.querySelector('table tbody');
-                        if (tbody && tbody.children.length === 0) {
+                        const tbody = document.querySelector('.pedidos-table tbody');
+                        if (tbody && tbody.querySelectorAll('tr').length === 0) {
                             const vazio = document.createElement('tr');
                             vazio.innerHTML = '<td colspan="7">Nenhum pedido encontrado com os filtros aplicados.</td>';
                             tbody.appendChild(vazio);
                         }
-                    }, 200);
+                    }, 150);
                 }
                 if (typeof notificationSystem !== 'undefined') {
                     notificationSystem.success('Pedido excluído', data.message || 'Pedido excluído com sucesso!', 4000);
+                } else {
+                    console.log('Pedido excluído com sucesso!');
                 }
             } else if (acaoAtual === 'confirmar_comercial') {
                 fecharModal();
