@@ -253,6 +253,19 @@ class VisionOcrService:
         except Exception as e:
             print(f"Erro durante extração de texto com Google Vision: {e}")
             raise OcrProcessingError(f"Falha na extração de texto: {str(e)}")
+
+    @classmethod
+    def extract_text(cls, file_path: str) -> str:
+        """
+        Extrai o texto completo de um arquivo usando Google Vision.
+        
+        Args:
+            file_path (str): Caminho absoluto do arquivo (PDF ou imagem).
+        
+        Returns:
+            str: Texto reconhecido pelo Vision.
+        """
+        return cls._extract_text_from_file(file_path)
     
     @staticmethod
     def _find_amount_in_text(text: str) -> Optional[float]:
