@@ -306,6 +306,14 @@ def visualizar_pedido(id):
         
         # Capturar parâmetro origem para o template
         origem = request.args.get('origem', 'pedidos')
+        retorno_params = {
+            'filtro': request.args.get('filtro'),
+            'data_inicio': request.args.get('data_inicio'),
+            'data_fim': request.args.get('data_fim'),
+            'sort': request.args.get('sort'),
+            'direction': request.args.get('direction')
+        }
+        retorno_params = {chave: valor for chave, valor in retorno_params.items() if valor not in (None, '')}
         
         current_app.logger.info(f"Pedido {id} visualizado por {session.get('usuario_nome', 'N/A')} (origem: {origem})")
         
@@ -314,7 +322,8 @@ def visualizar_pedido(id):
                              total=totais['total'], 
                              pago=totais['pago'], 
                              saldo=totais['saldo'],
-                             origem=origem)
+                             origem=origem,
+                             retorno_params=retorno_params)
         
     except Exception as e:
         current_app.logger.error(f"Erro ao visualizar pedido: {str(e)}")

@@ -421,7 +421,11 @@
                 {{ item.status }}
             </td>
             <td>
-                <a href="{{ url_for('pedidos.visualizar_pedido', id=item.pedido.id) }}" class="botao-ver" onclick="console.log('Botão VER clicado para pedido {{ item.pedido.id }}')">👁️ Ver</a>
+                <a href="{{ url_for('pedidos.visualizar_pedido', id=item.pedido.id, origem='pedidos', filtro=filtro, data_inicio=data_inicio, data_fim=data_fim, sort=current_sort, direction=current_direction) }}"
+                   class="botao-ver"
+                   onclick="console.log('Botão VER clicado para pedido {{ item.pedido.id }}')">
+                    👁️ Ver
+                </a>
             </td>
             <td>
                 <div class="action-icons">
