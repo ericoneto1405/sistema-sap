@@ -21,19 +21,25 @@ def dashboard():
     Cache: 10 minutos
     Invalidação: pedidos e clientes atualizados
     """
+    data_inicio = request.args.get('data_inicio', '')
+    data_fim = request.args.get('data_fim', '')
+
     resumo = VendedorService.get_resumo_dashboard()
     
     # Rankings
-    rankings_data = VendedorService.get_rankings('todos')
+    rankings_data = VendedorService.get_rankings('todos', data_inicio=data_inicio, data_fim=data_fim)
     ranking_faturamento = rankings_data['faturamento'][:10]
     ranking_margem = rankings_data['margem'][:10]
-    ranking_produtos = VendedorService.get_ranking_produtos(10)
+    ranking_produtos = VendedorService.get_ranking_produtos(10, data_inicio=data_inicio, data_fim=data_fim)
     
     return render_template('vendedor/dashboard.html',
                          resumo=resumo,
                          ranking_faturamento=ranking_faturamento,
                          ranking_margem=ranking_margem,
-                         ranking_produtos=ranking_produtos)
+                         ranking_produtos=ranking_produtos,
+                         filtro_data_inicio=data_inicio,
+                         filtro_data_fim=data_fim,
+                         intervalo_rankings=rankings_data.get('intervalo'))
 
 @vendedor_bp.route('/cliente/<int:cliente_id>')
 @login_obrigatorio
@@ -71,11 +77,16 @@ def rankings():
     Invalidação: pedidos atualizados
     """
     periodo = request.args.get('periodo', 'todos')
-    rankings_data = VendedorService.get_rankings(periodo)
+    data_inicio = request.args.get('data_inicio', '')
+    data_fim = request.args.get('data_fim', '')
+
+    rankings_data = VendedorService.get_rankings(periodo, data_inicio=data_inicio, data_fim=data_fim)
     
     return render_template('vendedor/rankings.html', 
                          rankings=rankings_data,
-                         periodo_atual=periodo)
+                         periodo_atual=periodo,
+                         data_inicio=data_inicio,
+                         data_fim=data_fim)
 
 @vendedor_bp.route('/api/buscar-cliente')
 @login_obrigatorio

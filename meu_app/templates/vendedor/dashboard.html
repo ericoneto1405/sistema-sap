@@ -46,8 +46,33 @@
 
     <!-- Rankings -->
     <div class="rankings-section">
-        <h2>🏆 Rankings</h2>
-        
+        <div class="rankings-header">
+            <h2>🏆 Rankings</h2>
+            <form class="ranking-filter-form" method="get">
+                <div class="filter-group">
+                    <label for="data_inicio">Data inicial</label>
+                    <input type="date" id="data_inicio" name="data_inicio" value="{{ filtro_data_inicio }}">
+                </div>
+                <div class="filter-group">
+                    <label for="data_fim">Data final</label>
+                    <input type="date" id="data_fim" name="data_fim" value="{{ filtro_data_fim }}">
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-aplicar">Aplicar</button>
+                    {% if filtro_data_inicio or filtro_data_fim %}
+                    <a href="{{ url_for('vendedor.dashboard') }}" class="btn-limpar">Limpar</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+        {% if intervalo_rankings and (intervalo_rankings.inicio or intervalo_rankings.fim) %}
+        <p class="intervalo-info">
+            Exibindo resultados de
+            {{ intervalo_rankings.inicio or 'sempre' }}
+            até
+            {{ intervalo_rankings.fim or 'hoje' }}.
+        </p>
+        {% endif %}
         <div class="rankings-grid">
             <!-- Ranking: Clientes por Valor -->
             <div class="ranking-card">
@@ -271,10 +296,86 @@
     margin-top: 40px;
 }
 
-.rankings-section h2 {
-    font-size: 1.5rem;
+.rankings-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.rankings-header h2 {
+    font-size: 1.6rem;
     color: #2c3e50;
-    margin-bottom: 20px;
+    margin: 0;
+}
+
+.ranking-filter-form {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.ranking-filter-form .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ranking-filter-form label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.ranking-filter-form input[type="date"] {
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-aplicar {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-aplicar:hover {
+    background: #5a67d8;
+}
+
+.btn-limpar {
+    background: #f1f3f5;
+    color: #495057;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.btn-limpar:hover {
+    background: #e9ecef;
+    color: #343a40;
+}
+
+.intervalo-info {
+    margin-bottom: 16px;
+    color: #6c757d;
+    font-size: 0.95rem;
 }
 
 .rankings-grid {

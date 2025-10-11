@@ -176,22 +176,52 @@ class VendedorService:
         }
     
     @staticmethod
-    def get_rankings(periodo='todos'):
+    @staticmethod
+    def _parse_data_param(valor):
+        """
+        Converte string YYYY-MM-DD em date.
+        """
+        if not valor:
+            return None
+        try:
+            return datetime.strptime(valor, '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def get_rankings(periodo='todos', data_inicio=None, data_fim=None):
         """
         Retorna rankings de clientes
         """
-        # Definir filtro de período
-        filtro_data = None
-        if periodo != 'todos':
+        # Determinar intervalo de datas
+        inicio_personalizado = VendedorService._parse_data_param(data_inicio)
+        fim_personalizado = VendedorService._parse_data_param(data_fim)
+
+        if inicio_personalizado and fim_personalizado and inicio_personalizado > fim_personalizado:
+            inicio_personalizado, fim_personalizado = fim_personalizado, inicio_personalizado
+
+        filtro_data_inicio = None
+        filtro_data_fim = None
+
+        if inicio_personalizado or fim_personalizado:
+            filtro_data_inicio = datetime.combine(inicio_personalizado, datetime.min.time()) if inicio_personalizado else None
+            filtro_data_fim = datetime.combine(fim_personalizado, datetime.max.time()) if fim_personalizado else None
+        elif periodo != 'todos':
             hoje = datetime.now().date()
             if periodo == 'ultimo_mes':
-                filtro_data = hoje - timedelta(days=30)
+                filtro = hoje - timedelta(days=30)
             elif periodo == 'ultimos_3_meses':
-                filtro_data = hoje - timedelta(days=90)
+                filtro = hoje - timedelta(days=90)
             elif periodo == 'ultimos_6_meses':
-                filtro_data = hoje - timedelta(days=180)
+                filtro = hoje - timedelta(days=180)
             elif periodo == 'ultimo_ano':
-                filtro_data = hoje - timedelta(days=365)
+                filtro = hoje - timedelta(days=365)
+            else:
+                filtro = None
+
+            if filtro:
+                filtro_data_inicio = datetime.combine(filtro, datetime.min.time())
+                filtro_data_fim = datetime.combine(hoje, datetime.max.time())
         
         # Query base - buscar clientes com pedidos
         query = db.session.query(
@@ -200,8 +230,10 @@ class VendedorService:
             func.count(Pedido.id).label('total_pedidos')
         ).join(Pedido, Cliente.id == Pedido.cliente_id)
         
-        if filtro_data:
-            query = query.filter(Pedido.data >= filtro_data)
+        if filtro_data_inicio:
+            query = query.filter(Pedido.data >= filtro_data_inicio)
+        if filtro_data_fim:
+            query = query.filter(Pedido.data <= filtro_data_fim)
         
         clientes_data = query.group_by(Cliente.id, Cliente.nome).all()
         
@@ -214,8 +246,10 @@ class VendedorService:
             ).join(Pedido, ItemPedido.pedido_id == Pedido.id)\
              .filter(Pedido.cliente_id == cliente_data.id)
             
-            if filtro_data:
-                valor_total = valor_total.filter(Pedido.data >= filtro_data)
+            if filtro_data_inicio:
+                valor_total = valor_total.filter(Pedido.data >= filtro_data_inicio)
+            if filtro_data_fim:
+                valor_total = valor_total.filter(Pedido.data <= filtro_data_fim)
             
             valor_total = valor_total.scalar() or 0
             
@@ -225,8 +259,10 @@ class VendedorService:
             ).join(Pedido, ItemPedido.pedido_id == Pedido.id)\
              .filter(Pedido.cliente_id == cliente_data.id)
             
-            if filtro_data:
-                custo_total = custo_total.filter(Pedido.data >= filtro_data)
+            if filtro_data_inicio:
+                custo_total = custo_total.filter(Pedido.data >= filtro_data_inicio)
+            if filtro_data_fim:
+                custo_total = custo_total.filter(Pedido.data <= filtro_data_fim)
             
             custo_total = custo_total.scalar() or 0
             
@@ -253,8 +289,10 @@ class VendedorService:
             ).join(Pedido, ItemPedido.pedido_id == Pedido.id)\
              .filter(Pedido.cliente_id == cliente_data['id'])
             
-            if filtro_data:
-                produtos_diferentes = produtos_diferentes.filter(Pedido.data >= filtro_data)
+            if filtro_data_inicio:
+                produtos_diferentes = produtos_diferentes.filter(Pedido.data >= filtro_data_inicio)
+            if filtro_data_fim:
+                produtos_diferentes = produtos_diferentes.filter(Pedido.data <= filtro_data_fim)
             
             produtos_diferentes = produtos_diferentes.scalar() or 0
             
@@ -293,7 +331,11 @@ class VendedorService:
         return {
             'faturamento': ranking_faturamento,
             'diversidade': ranking_diversidade,
-            'margem': ranking_margem
+            'margem': ranking_margem,
+            'intervalo': {
+                'inicio': inicio_personalizado.strftime('%d/%m/%Y') if inicio_personalizado else (filtro_data_inicio.strftime('%d/%m/%Y') if filtro_data_inicio else None),
+                'fim': fim_personalizado.strftime('%d/%m/%Y') if fim_personalizado else (filtro_data_fim.strftime('%d/%m/%Y') if filtro_data_fim else None)
+            }
         }
     
     @staticmethod
@@ -401,25 +443,39 @@ class VendedorService:
         return sorted(resultado, key=lambda x: x['dias_sem_comprar'], reverse=True)
     
     @staticmethod
-    def get_ranking_produtos(limite=10):
+    def get_ranking_produtos(limite=10, data_inicio=None, data_fim=None):
         """
         Retorna ranking de produtos por valor vendido
         """
-        ranking = db.session.query(
+        inicio = VendedorService._parse_data_param(data_inicio)
+        fim = VendedorService._parse_data_param(data_fim)
+        if inicio and fim and inicio > fim:
+            inicio, fim = fim, inicio
+        inicio_dt = datetime.combine(inicio, datetime.min.time()) if inicio else None
+        fim_dt = datetime.combine(fim, datetime.max.time()) if fim else None
+
+        ranking_query = db.session.query(
             Produto.id,
             Produto.nome,
             func.sum(ItemPedido.valor_total_venda).label('valor_total'),
             func.sum(ItemPedido.quantidade).label('quantidade_total')
         ).join(ItemPedido, Produto.id == ItemPedido.produto_id)\
-         .group_by(Produto.id, Produto.nome)\
-         .order_by(desc(func.sum(ItemPedido.valor_total_venda)))\
-         .limit(limite).all()
-        
+         .join(Pedido, ItemPedido.pedido_id == Pedido.id)
+
+        if inicio_dt:
+            ranking_query = ranking_query.filter(Pedido.data >= inicio_dt)
+        if fim_dt:
+            ranking_query = ranking_query.filter(Pedido.data <= fim_dt)
+
+        ranking = ranking_query.group_by(Produto.id, Produto.nome)\
+                               .order_by(desc(func.sum(ItemPedido.valor_total_venda)))\
+                               .limit(limite).all()
+
         return [{
             'id': p.id,
             'nome': p.nome,
             'valor_total': float(p.valor_total),
-            'quantidade_total': p.quantidade_total
+            'quantidade_total': int(p.quantidade_total or 0)
         } for p in ranking]
     
     @staticmethod
