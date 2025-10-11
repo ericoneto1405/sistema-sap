@@ -52,6 +52,18 @@
                     </a>
                 </li>
 
+                <!-- Leitura de Notas -->
+                {% if session.usuario_tipo == 'admin' or session.acesso_financeiro %}
+                <li class="nav-item">
+                    <a href="{{ url_for('leitura_notas.index') }}" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h7l5-5V4c0-1.1-.9-2-2-2H7zm7 18v-3h3l-3 3zM9 6h6v2H9V6zm0 4h6v2H9v-2zm0 4h4v2H9v-2z"/>
+                        </svg>
+                        <span class="nav-text">Leitura de Notas</span>
+                    </a>
+                </li>
+                {% endif %}
+
                 <!-- Clientes -->
                 {% if session.usuario_tipo == 'admin' or session.acesso_clientes %}
                 <li class="nav-item">

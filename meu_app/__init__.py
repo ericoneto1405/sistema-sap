@@ -328,6 +328,7 @@ def register_blueprints(app):
     - apuracao          → /apuracao
     - log_atividades    → /log_atividades
     - vendedor          → /vendedor
+    - leitura_notas     → /leitura-notas
     
     Garantia: prefixos definidos nos módulos (única fonte de verdade)
     """
@@ -347,6 +348,7 @@ def register_blueprints(app):
     from .log_atividades import log_atividades_bp
     from .vendedor import vendedor_bp
     from .jobs.routes import bp as jobs_bp  # Fase 7
+    from .leitura_notas import leitura_notas_bp
     
     # Registrar blueprints (ordem não importa, prefixos evitam colisão)
     app.register_blueprint(produtos_bp)
@@ -359,6 +361,7 @@ def register_blueprints(app):
     app.register_blueprint(apuracao_bp)
     app.register_blueprint(log_atividades_bp)
     app.register_blueprint(vendedor_bp)
+    app.register_blueprint(leitura_notas_bp)
     app.register_blueprint(jobs_bp)  # Fase 7
     
     app.logger.info(f'Blueprints registrados: {len(app.blueprints)}')
